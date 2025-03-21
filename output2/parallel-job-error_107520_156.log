@@ -1,0 +1,1 @@
+/var/spool/slurmd/job107677/slurm_script : ligne 25 : 857141 Processus arrêté      python -u job.py $TASK
