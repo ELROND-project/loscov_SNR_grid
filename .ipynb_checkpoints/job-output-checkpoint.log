@@ -1,7 +1,8 @@
 Running preprocessing step...
-Successfully saved Saved all distributions at distributions
-Successfully defined distribution functions.
-[0, 1, 2, 3, 4]
+Finished 2. Redshift Distributions.
+Finished 3. Correlation Functions
+Finished 4. Angular Distributions
 Task file 'tasks.txt' created successfully with all required jobs.
+Slurm file created.
 Preprocessing complete. Submitting parallel jobs...
-Submitted batch job 104410
+Submitted batch job 176560

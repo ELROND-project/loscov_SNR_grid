@@ -1,19 +1,36 @@
 ##############################################################################################################################
-################################################ 1. PRELIMINARIES ############################################################
+#################################################### 1. IMPORTS ##############################################################
 ##############################################################################################################################
 
 from config import *                                #all constants, defined in the config.py file
+from functions.useful_functions import *            #useful functions, defined in the functions/useful_functions.py file
 
-################################################## 1.1 Parameters ############################################################
+##############################################################################################################################
+############################################ 2  REDSHIFT DISTRIBUTIONS #######################################################
 ##############################################################################################################################
 
-from functions.useful_functions import *            #useful functions, defined in the functions/useful_functions.py file
+from functions.redshift_distributions import *      #redshift distributions class
+
+redshift_distribution_E = Redshift_Distributions(NGal, binscheme = binscheme_E, Nbinz = Nbinz_E, zmax_dist = zmax_E)
+redshift_distribution_P = Redshift_Distributions(NGal, binscheme = binscheme_P, Nbinz = Nbinz_P, zmax_dist = zmax_P)
+
+redshift_distributions = {"E" : redshift_distribution_E,
+                          "P" : redshift_distribution_P}
+
+save_pickle(redshift_distributions, f'data/{suffix}/redshift_distributions', f"Saved redshift distributions")
+add_dict(redshift_distributions)
+
+print(f"Finished 2. Redshift Distributions.")
+
+##############################################################################################################################
+################################################# 3. CORRELATIONS ############################################################
+##############################################################################################################################
 
 if compute_correlations:
 
     Thetamin = arcmintorad(Thetamin_arcmin)  #minimum theta from which we calculate correlation functions (in radians)
     
-    ####################################### 1.2 Euclid lenses and galaxies ##################################################
+    ####################################### 3.1 Euclid lenses and galaxies ##################################################
     #########################################################################################################################
     
     #reading in the forecasted sample of Euclid lenses
@@ -25,30 +42,28 @@ if compute_correlations:
     chid = background.comoving_radial_distance(zd)
     chis = background.comoving_radial_distance(zs)
     
-    chimax_lens = max(chis)
+    chimax_L = max(chis)
 
-    zmax_gal = max(binparams['redshifts']) 
+    chimax_E = background.comoving_radial_distance(zmax_E)
+    chimax_P = background.comoving_radial_distance(zmax_P)
 
-    chimax_gal = background.comoving_radial_distance(zmax_gal)
-
-    chimax = max(chimax_lens,chimax_gal) 
+    chimax = max(chimax_L,chimax_E,chimax_P) 
     
     #place these variables in the global dictionary
     add_dict(chimax, chid, chis, zd, zs)
 
     ##############################################################################################################################
-    ############################################# 2. AUTOCORRELATION FUNCTIONS ###################################################
+    ############################################ 3.2 AUTOCORRELATION FUNCTIONS ###################################################
     ##############################################################################################################################
     
     from functions.correlations.get_correlations import *
     
-    ######################################################## 2.1 Shear ###########################################################
+    ######################################################### 3.2.1 LL ###########################################################
     ##############################################################################################################################
     
+    from functions.correlations.LL import *
     
-    from functions.correlations.shear import *
-    
-    ################################################# 2.1.1 weight functions ######################################################
+    ################################################# 3.2.1.1 weight functions ######################################################
     
     # Interpolate to get a fast 1D weight function
     W_LOS_mean_vec = np.vectorize(W_LOS_mean)
@@ -65,48 +80,49 @@ if compute_correlations:
     
     add_dict(W_LOS_mean_intp, WW_LOS_rms_intp)
     
-    ######################################################## 2.1.2 cls ###########################################################
+    ######################################################## 3.2.1.2 cls ###########################################################
     
-    ls, cl2, cl1, cl32 = get_cls_gamma_LOS(chimax, lmax, nl)
+    ls, cl2, cl1 = get_cl_L(chimax, lmax, nl)
     cl2_LOS_intp = CubicSpline(ls, cl2)
     cl1_LOS_intp = CubicSpline(ls, cl1)
-    cl32_LOS_intp = CubicSpline(ls, cl32)
     
-    ############################################# 2.1.3 correlation functions ####################################################
+    ############################################# 3.2.1.3 correlation functions ####################################################
     
-    Theta, xi2_LOS_plus, xi2_LOS_minus = get_correlations(
+    Theta, LLp, LLx, LL_plus, LL_minus = get_correlations(
         cl2_LOS_intp, Thetamin, Thetamax, nTheta=nTheta)
-    Theta, xi1_LOS_plus, xi1_LOS_minus = get_correlations(
+    
+    LLp = CubicSpline(Theta, LLp)
+    LLx = CubicSpline(Theta, LLx)
+    
+    LL_plus = CubicSpline(Theta, LL_plus)
+    LL_minus = CubicSpline(Theta, LL_minus)
+    
+    Theta, L0p, L0x, L0_plus, L0_minus = get_correlations(
         cl1_LOS_intp, Thetamin, Thetamax, nTheta=nTheta)
-    Theta, xi32_LOS_plus, xi32_LOS_minus = get_correlations(
-        cl32_LOS_intp, Thetamin, Thetamax, nTheta=nTheta)
     
-    Theta_arcmin = radtoarcmin(Theta)
+    L0_plus = CubicSpline(Theta, L0_plus)
+
+    L0 = L0_plus(0)
+
+    LL_plus_primitive = compute_antiderivative(LL_plus, Thetamax_LL_plus)
+    LL_minus_primitive = compute_antiderivative(LL_minus, Thetamax_LL_minus)
     
-    xi2_LOS_plus_intp = CubicSpline(Theta, xi2_LOS_plus)
-    xi1_LOS_plus_intp = CubicSpline(Theta, xi1_LOS_plus)
-    xi32_LOS_plus_intp = CubicSpline(Theta, xi32_LOS_plus)
-    xi2_LOS_minus_intp = CubicSpline(Theta, xi2_LOS_minus)
-    xi1_LOS_minus_intp = CubicSpline(Theta, xi1_LOS_minus)
-    xi32_LOS_minus_intp = CubicSpline(Theta, xi32_LOS_minus)
+    print('Finished 3.2.1 LL autocorrelation functions')
     
-    print('Finished 2.1 LOS autocorrelation functions')
+    add_dict(LLp, LLx, L0, LL_plus, LL_minus, LL_plus_primitive, LL_minus_primitive)
     
-    add_dict(xi2_LOS_plus_intp, xi1_LOS_plus_intp, xi32_LOS_plus_intp, xi2_LOS_minus_intp, xi1_LOS_minus_intp, xi32_LOS_minus_intp)
+    ######################################################## 3.2.2 EE ###########################################################
+    #############################################################################################################################
     
-    ######################################################## 2.2 Shape ###########################################################
-    ##############################################################################################################################
+    from functions.correlations.EE import *
     
-    
-    from functions.correlations.shape import *
-    
-    ################################################# 2.2.1 weight functions ######################################################
+    ################################################# 3.2.2.1 weight functions ######################################################
     
     # Interpolate to get fast 1D weight functions
     
     W_os_mean_intp = []
     
-    for b in range(5):
+    for b in range(Nbinz_E):
         W_os_mean_vec = np.vectorize(W_os_mean)
         chi = np.linspace(1e-3, chimax, 100)
         W = W_os_mean_vec(chi, b)
@@ -116,7 +132,7 @@ if compute_correlations:
     
     WW_os_rms_intp = []
     
-    for b in range(5):
+    for b in range(Nbinz_E):
         WW_os_mean_vec = np.vectorize(WW_os_mean)
         chi = np.linspace(1e-5, chimax, 100)                    #maybe parameterise these?
         WW = WW_os_mean_vec(chi, b)
@@ -125,87 +141,103 @@ if compute_correlations:
     
     add_dict(W_os_mean_intp, WW_os_rms_intp)
     
-    ######################################################## 2.2.2 cls ###########################################################
+    ######################################################## 3.2.2.2 cls ###########################################################
     
     ls_list = []
     cl2_eps_intp = []
     cl1_eps_intp = []
     
-    for b1 in range(5): #loop through b
+    for b1 in range(Nbinz_E): #loop through b
     
         cl2_eps_intp.append([])
     
-        for b2 in range(5): #loop through b'
+        for b2 in range(Nbinz_E): #loop through b'
             
-            ls, cl2, cl1 = get_cl_gamma(b1, b2, chimax, lmax, nl) #each time we recalculate everything (a bit inefficient)
+            ls, cl2, cl1 = get_cl_E(b1, b2, chimax, lmax, nl) #each time we recalculate everything (a bit inefficient)
             
             cl2_eps_intp[b1].append(CubicSpline(ls, cl2))
+
+            if b1 == b2:
+                ls_list.append(ls)
+                cl1_eps_intp.append(CubicSpline(ls, cl1))
     
-        ls_list.append(ls)
-        cl1_eps_intp.append(CubicSpline(ls, cl1))
-    
-    ############################################# 2.2.3 correlation functions ####################################################
+    ############################################# 3.2.2.3 correlation functions ####################################################
     
     Theta_list = []
-    xi2_eps_plus_list = []
-    xi2_eps_minus_list = []
-    xi1_eps_plus_list = []
-    xi1_eps_minus_list = []
+    EEp_list = []
+    EEx_list = []
+    E0_list = []
+    EE_plus_list = []
+    EE_minus_list = []
     
-    for b1 in range(5):
+    for b1 in range(Nbinz_E):
             
-        xi2_eps_plus_list.append([])
-        xi2_eps_minus_list.append([])
-        
-        Theta, xi1_eps_plus, xi1_eps_minus = get_correlations(
+        EEp_list.append([])
+        EEx_list.append([])
+            
+        EE_plus_list.append([])
+        EE_minus_list.append([])
+            
+        Theta, E0p, E0x, E0_plus, E0_minus = get_correlations(
             cl1_eps_intp[b1], Thetamin, Thetamax, nTheta)
+            
+        E0_list.append(E0_plus)
     
-        for b2 in range(5):
-            Theta, xi2_eps_plus, xi2_eps_minus = get_correlations(
+        for b2 in range(Nbinz_E):
+            Theta, EEp, EEx, EE_plus, EE_minus = get_correlations(
                 cl2_eps_intp[b1][b2], Thetamin, Thetamax, nTheta)
             
-            xi2_eps_plus_list[b1].append(xi2_eps_plus)
-            xi2_eps_minus_list[b1].append(xi2_eps_minus)
+            EEp_list[b1].append(EEp)
+            EEx_list[b1].append(EEx)
+            
+            EE_plus_list[b1].append(EE_plus)
+            EE_minus_list[b1].append(EE_minus)
         
         Theta_list.append(Theta)
-        xi1_eps_plus_list.append(xi1_eps_plus)
-        xi1_eps_minus_list.append(xi1_eps_minus)
     
-    xi2_eps_plus_intp = []
-    xi1_eps_plus_intp = []
-    xi2_eps_minus_intp = []
-    xi1_eps_minus_intp = []
+    EEp = []
+    EEx = []
     
-    for b1 in range(5):
+    EE_plus = []
+    EE_minus = []
+    
+    E0 = []
+    
+    for b1 in range(Nbinz_E):
         
-        xi1_eps_plus_intp.append(CubicSpline(Theta_list[b1], xi1_eps_plus_list[b1]))
-        xi1_eps_minus_intp.append(CubicSpline(Theta_list[b1], xi1_eps_minus_list[b1]))
-        xi2_eps_plus_intp.append([])
-        xi2_eps_minus_intp.append([])
+        EEp.append([])
+        EEx.append([])
+        
+        EE_plus.append([])
+        EE_minus.append([])
+        
+        E0.append(CubicSpline(Theta_list[b1], E0_list[b1])(0))
     
-        for b2 in range(5):
-            xi2_eps_plus_intp[b1].append(CubicSpline(Theta_list[b1], xi2_eps_plus_list[b1][b2]))
-            xi2_eps_minus_intp[b1].append(CubicSpline(Theta_list[b1], xi2_eps_minus_list[b1][b2]))
+        for b2 in range(Nbinz_E):
+            EEp[b1].append(CubicSpline(Theta_list[b1], EEp_list[b1][b2]))
+            EEx[b1].append(CubicSpline(Theta_list[b1], EEx_list[b1][b2]))
             
-    print('Finished 2.2 shape autocorrelation functions')
+            EE_plus[b1].append(CubicSpline(Theta_list[b1], EE_plus_list[b1][b2]))
+            EE_minus[b1].append(CubicSpline(Theta_list[b1], EE_minus_list[b1][b2]))
+            
+    print('Finished 3.2.2 EE autocorrelation functions')
     
-    add_dict(xi2_eps_plus_intp,xi1_eps_plus_intp,xi2_eps_minus_intp,xi1_eps_minus_intp)
-    
-    ######################################################## 2.3 Position ########################################################
-    ##############################################################################################################################
+    add_dict(EEp, EEx, E0, EE_plus, EE_minus)
 
+    ######################################################### 3.2.3 PP ###########################################################
+    ##############################################################################################################################
     
-    from functions.correlations.position import *
+    from functions.correlations.PP import *
     
-    ################################################# 2.3.1 weight functions ######################################################
+    ################################################# 3.2.3.1 weight functions ######################################################
     
     # Interpolate to get fast 1D weight functions
     
     W_d_mean_intp = []
     
-    for b in range(5):
+    for b in range(Nbinz_P):
         W_d_mean_vec = np.vectorize(W_d)
-        chi = np.linspace(1e-3, chimax, 100)
+        chi = np.linspace(1e-5, chimax, 100)
         W = W_d_mean_vec(chi, b)
         W_d_mean_intp.append(CubicSpline(chi, W))
     
@@ -213,7 +245,7 @@ if compute_correlations:
     
     WW_d_rms_intp = []
     
-    for b in range(5):
+    for b in range(Nbinz_P):
         WW_d_mean_vec = np.vectorize(WW_d)
         chi = np.linspace(1e-5, chimax, 100)                    #maybe parameterise these?
         WW = WW_d_mean_vec(chi, b)
@@ -224,401 +256,442 @@ if compute_correlations:
     add_dict(W_d_mean_intp, WW_d_rms_intp)
     add_dict(W_d_intp)
     
-    ######################################################## 2.3.2 cls ###########################################################
+    ######################################################## 3.2.3.2 cls ###########################################################
     
     ls_list = []
-    cl1_d_intp = []
     cl2_d_intp = []
-    cl32_d_intp = []
     
-    for b1 in range(5): #loop through b
+    for b1 in range(Nbinz_P): #loop through b
     
         cl2_d_intp.append([])
-        cl32_d_intp.append([])
         
-        for b2 in range(5): #loop through b'
+        for b2 in range(Nbinz_P): #loop through b'
             
-            ls, cl2, cl1, cl32 = get_cl_d(b1, b2, chimax, lmax, nl) #each time we recalculate everything (a bit inefficient)
+            ls, cl2 = get_cl_P(b1, b2, chimax, lmax, nl) #each time we recalculate everything (a bit inefficient)
             
             cl2_d_intp[b1].append(CubicSpline(ls, cl2))
-            cl32_d_intp[b1].append(CubicSpline(ls, cl32))     #almost certainly wrong
-        
-        ls_list.append(ls)
-        cl1_d_intp.append(CubicSpline(ls, cl1)) 
+
+            if b1 == b2:
+                ls_list.append(ls)
 
     #Note - because of the weight function, all of these will be zero unless b1 == b2 
     
-    ############################################# 2.3.3 correlation functions ####################################################
+    ############################################# 3.2.3.3 correlation functions ####################################################
     
     Theta_list = []
-    xi2_d_list = []
-    xi1_d_list = []
-    xi32_d_list = []
+    PP_list = []
     
-    for b1 in range(5):
+    for b1 in range(Nbinz_P):
             
-        xi2_d_list.append([])
-        xi32_d_list.append([])
-            
-        Theta, xi1_d = get_DD_correlations(
-            cl1_d_intp[b1], Thetamin, Thetamax, nTheta)
-        
-        Theta_list.append(Theta)
-        xi1_d_list.append(xi1_d)
+        PP_list.append([])
     
-        for b2 in range(5):
-            Theta, xi2_d = get_DD_correlations(
+        for b2 in range(Nbinz_P):
+            
+            Theta, PP = get_DD_correlations(
                 cl2_d_intp[b1][b2], Thetamin, Thetamax, nTheta)
             
-            xi2_d_list[b1].append(xi2_d)
-            
-            Theta, xi32_d = get_DD_correlations(
-                cl32_d_intp[b1][b2], Thetamin, Thetamax, nTheta)
-            
-            xi32_d_list[b1].append(xi32_d)
-    
-    xi2_d_intp = []
-    xi1_d_intp = []
-    xi32_d_intp = []
-    
-    for b1 in range(5):
+            PP_list[b1].append(PP)
         
-        xi2_d_intp.append([])
-        xi32_d_intp.append([])
-        xi1_d_intp.append(CubicSpline(Theta_list[b1], xi1_d_list[b1]))
+        Theta_list.append(Theta)
     
-        for b2 in range(5):
-            xi2_d_intp[b1].append(CubicSpline(Theta_list[b1], xi2_d_list[b1][b2]))
-            xi32_d_intp[b1].append(CubicSpline(Theta_list[b1], xi32_d_list[b1][b2]))
+    PP = []
+    
+    for b1 in range(Nbinz_P):
+        
+        PP.append([])
+    
+        for b2 in range(Nbinz_P):
+            PP[b1].append(CubicSpline(Theta_list[b1], PP_list[b1][b2]))
             
-    print('Finished 2.3 position autocorrelation functions')
+    print('Finished 3.2.3 PP autocorrelation functions')
     
-    add_dict(xi2_d_intp, xi1_d_intp, xi32_d_intp)
+    add_dict(PP)
     
     ##############################################################################################################################
-    ############################################ 3. MIXED CORRELATION FUNCTIONS ##################################################
+    ############################################ 3.3 MIXED CORRELATION FUNCTIONS #################################################
     ##############################################################################################################################
     
-    ##################################################### 3.1 shear shape ########################################################
+    ######################################################## 3.3.1 LE ############################################################
     ##############################################################################################################################
     
-    from functions.correlations.shear_shape import *
+    from functions.correlations.LE import *
     
     ls_list = []
     cl2LOSos_intp_list = []
-    cl32LOSos2_intp_list = []
-    cl32LOS2os_intp_list = []
-    cl1LOSos_intp_list = []
     
-    for b in range(5):
+    for b in range(Nbinz_E):
 
-        ls, cl2LOSos, cl32LOSos2, cl32LOS2os, cl1LOSos = get_cls_mixed_LOS_os(b, chimax, lmax, nl)
+        ls, cl2LOSos = get_cls_mixed_LE(b, chimax, lmax, nl)
 
         ls_list.append(ls)
 
         cl2LOSos_intp_list.append(CubicSpline(ls, cl2LOSos))
-        cl32LOSos2_intp_list.append(CubicSpline(ls, cl32LOSos2))
-        cl32LOS2os_intp_list.append(CubicSpline(ls, cl32LOS2os))
-        cl1LOSos_intp_list.append(CubicSpline(ls, cl1LOSos))
     
     Theta_list = []
     
-    xi2_LOS_eps_plus_list = []
-    xi2_LOS_eps_minus_list = []
+    LEp_list = []
+    LEx_list = []
+
+    LE_plus_list = []
+    LE_minus_list = []
     
-    xi32_LOS_eps2_plus_list = []
-    xi32_LOS_eps2_minus_list = []
-    
-    xi32_LOS2_eps_plus_list = []
-    xi32_LOS2_eps_minus_list = []
-    
-    xi1_LOS_eps_plus_list = []
-    xi1_LOS_eps_minus_list = []
-    
-    for b1 in range(5):
+    for b1 in range(Nbinz_E):
         
-        Theta, xi2_LOS_eps_plus, xi2_LOS_eps_minus = get_correlations(
+        Theta, LEp, LEx, LE_plus, LE_minus = get_correlations(
             cl2LOSos_intp_list[b1], Thetamin, Thetamax, nTheta)
         
-        xi2_LOS_eps_plus_list.append(xi2_LOS_eps_plus)
-        xi2_LOS_eps_minus_list.append(xi2_LOS_eps_minus)
+        LEp_list.append(LEp)
+        LEx_list.append(LEx)
         
-        Theta, xi32_LOS_eps2_plus, xi32_LOS_eps2_minus = get_correlations(
-            cl32LOSos2_intp_list[b1], Thetamin, Thetamax, nTheta)
-        
-        xi32_LOS_eps2_plus_list.append(xi32_LOS_eps2_plus)
-        xi32_LOS_eps2_minus_list.append(xi32_LOS_eps2_minus)
-        
-        Theta, xi32_LOS2_eps_plus, xi32_LOS2_eps_minus = get_correlations(
-            cl32LOS2os_intp_list[b1], Thetamin, Thetamax, nTheta)
-        
-        xi32_LOS2_eps_plus_list.append(xi32_LOS2_eps_plus)
-        xi32_LOS2_eps_minus_list.append(xi32_LOS2_eps_minus)
-        
-        Theta, xi1_LOS_eps_plus, xi1_LOS_eps_minus = get_correlations(
-            cl1LOSos_intp_list[b1], Thetamin, Thetamax, nTheta)
-        
-        xi1_LOS_eps_plus_list.append(xi1_LOS_eps_plus)
-        xi1_LOS_eps_minus_list.append(xi1_LOS_eps_minus)
+        LE_plus_list.append(LE_plus)
+        LE_minus_list.append(LE_minus)
     
         Theta_list.append(Theta)
     
-    xi2_LOS_eps_plus_intp = []
-    xi2_LOS_eps_minus_intp = []
+    LEp = []
+    LEx = []
     
-    xi32_LOS_eps2_plus_intp = []
-    xi32_LOS_eps2_minus_intp = []
+    LE_plus = []
+    LE_minus = []
     
-    xi32_LOS2_eps_plus_intp = []
-    xi32_LOS2_eps_minus_intp = []
+    LE_plus_primitive = []
+    LE_minus_primitive = []
     
-    xi1_LOS_eps_plus_intp = []
-    xi1_LOS_eps_minus_intp = []
-    
-    for b1 in range(5):
+    for b1 in range(Nbinz_E):
         
-        xi2_LOS_eps_plus_intp.append(CubicSpline(Theta_list[b1], xi2_LOS_eps_plus_list[b1]))
-        xi2_LOS_eps_minus_intp.append(CubicSpline(Theta_list[b1], xi2_LOS_eps_minus_list[b1]))
-            
-        xi32_LOS_eps2_plus_intp.append(CubicSpline(Theta_list[b1], xi32_LOS_eps2_plus_list[b1]))
-        xi32_LOS_eps2_minus_intp.append(CubicSpline(Theta_list[b1], xi32_LOS_eps2_minus_list[b1]))
+        LEp.append(CubicSpline(Theta_list[b1], LEp_list[b1]))
+        LEx.append(CubicSpline(Theta_list[b1], LEx_list[b1]))
         
-        xi32_LOS2_eps_plus_intp.append(CubicSpline(Theta_list[b1], xi32_LOS2_eps_plus_list[b1]))
-        xi32_LOS2_eps_minus_intp.append(CubicSpline(Theta_list[b1], xi32_LOS2_eps_minus_list[b1]))
-            
-        xi1_LOS_eps_plus_intp.append(CubicSpline(Theta_list[b1], xi1_LOS_eps_plus_list[b1]))
-        xi1_LOS_eps_minus_intp.append(CubicSpline(Theta_list[b1], xi1_LOS_eps_minus_list[b1]))
+        LE_plus.append(CubicSpline(Theta_list[b1], LE_plus_list[b1]))
+        LE_minus.append(CubicSpline(Theta_list[b1], LE_minus_list[b1]))
+        
+        LE_plus_primitive.append(compute_antiderivative(LE_plus[b1], Thetamax_LE_plus))
+        LE_minus_primitive.append(compute_antiderivative(LE_minus[b1], Thetamax_LE_minus))
     
-    print('Finished 3.1 shear shape correlation functions')
+    print('Finished 3.3.1 LE correlation functions')
     
-    add_dict(xi2_LOS_eps_plus_intp, xi2_LOS_eps_minus_intp, xi32_LOS_eps2_plus_intp, xi32_LOS_eps2_minus_intp, xi32_LOS2_eps_plus_intp, xi32_LOS2_eps_minus_intp, xi1_LOS_eps_plus_intp, xi1_LOS_eps_minus_intp)
+    add_dict(LEp, LEx, LE_plus, LE_minus, LE_plus_primitive, LE_minus_primitive)
     
-    #################################################### 3.2 shear position ######################################################
+    ######################################################### 3.3.2 LP ###########################################################
     ##############################################################################################################################
     
-    from functions.correlations.shear_position import *
+    from functions.correlations.LP import *
     
     ls_list = []
     cl2LOSd_intp_list = []
-    cl32LOSd2_intp_list = []
-    cl32LOS2d_intp_list = []
-    cl1LOSd_intp_list = []
     
-    for b in range(5):
+    for b in range(Nbinz_P):
         
-        ls, cl2LOSd, cl32LOSd2, cl32LOS2d, cl1LOSd = get_cls_mixed_LOS_d(b, chimax, lmax, nl)
+        ls, cl2LOSd = get_cls_mixed_LP(b, chimax, lmax, nl)
             
         ls_list.append(ls)
         cl2LOSd_intp_list.append(CubicSpline(ls, cl2LOSd))
-        cl32LOS2d_intp_list.append(CubicSpline(ls, cl32LOS2d))
-        cl32LOSd2_intp_list.append(CubicSpline(ls, cl32LOSd2))
-        cl1LOSd_intp_list.append(CubicSpline(ls, cl1LOSd))
     
     Theta_list = []
     
-    xi2_LOS_d_list = []
+    LP_list = []
     
-    xi32_LOS_d2_list = []
-    
-    xi32_LOS2_d_list = []
-    
-    xi1_LOS_d_list = []
-    
-    for b in range(5):
+    for b in range(Nbinz_P):
         
-        Theta, xi2_LOS_d = get_gD_correlations(
+        Theta, LP = get_gD_correlations(
             cl2LOSd_intp_list[b], Thetamin, Thetamax, nTheta)
         
-        xi2_LOS_d_list.append(xi2_LOS_d)
-        
-        Theta, xi32_LOS2_d = get_gD_correlations(
-            cl32LOS2d_intp_list[b], Thetamin, Thetamax, nTheta)
-        
-        xi32_LOS2_d_list.append(xi32_LOS2_d)
-        
-        Theta, xi32_LOS_d2 = get_gD_correlations(
-            cl32LOSd2_intp_list[b], Thetamin, Thetamax, nTheta)
-        
-        xi32_LOS_d2_list.append(xi32_LOS_d2)
-        
-        Theta, xi1_LOS_d = get_gD_correlations(
-            cl1LOSd_intp_list[b], Thetamin, Thetamax, nTheta)
-        
-        xi1_LOS_d_list.append(xi1_LOS_d)
+        LP_list.append(LP)
     
         Theta_list.append(Theta)
     
-    xi2_LOS_d_intp = []
+    LP = []
     
-    xi32_LOS_d2_intp = []
+    LP_primitive = []
     
-    xi32_LOS2_d_intp = []
-    
-    xi1_LOS_d_intp = []
-    
-    for b in range(5):
+    for b in range(Nbinz_P):
         
-        xi2_LOS_d_intp.append(CubicSpline(Theta_list[b], xi2_LOS_d_list[b]))
+        LP.append(CubicSpline(Theta_list[b], LP_list[b]))
         
-        xi32_LOS2_d_intp.append(CubicSpline(Theta_list[b], xi32_LOS2_d_list[b]))
-            
-        xi32_LOS_d2_intp.append(CubicSpline(Theta_list[b], xi32_LOS_d2_list[b]))
-            
-        xi1_LOS_d_intp.append(CubicSpline(Theta_list[b], xi1_LOS_d_list[b]))
+        LP_primitive.append(compute_antiderivative(LP[b], Thetamax_LP))
     
-    print('Finished 3.2 shear position correlation functions')
+    print('Finished 3.3.2 LP correlation functions')
     
-    add_dict(xi2_LOS_d_intp, xi32_LOS_d2_intp, xi32_LOS2_d_intp, xi1_LOS_d_intp)
+    add_dict(LP, LP_primitive)
     
-    #################################################### 3.3 shape position ######################################################
+    ######################################################### 3.3.3 EP ##########################################################
     ##############################################################################################################################
-    
-    from functions.correlations.position_shape import *
+
+    from functions.correlations.EP import *
     
     ls_list = []
     cl2dos_intp_list = []
-    cl32dos2_intp_list = []
-    cl32d2os_intp_list = []
-    cl1dos_intp_list = []
     
-    for b1 in range(5):
+    for b1 in range(Nbinz_E):
         
         cl2dos_intp_list.append([])
-        cl32dos2_intp_list.append([])
-        cl32d2os_intp_list.append([])
-        cl1dos_intp_list.append([])
     
-        for b2 in range(5):
+        for b2 in range(Nbinz_P):
         
-            ls, cl2dos, cl32dos2, cl32d2os, cl1dos = get_cls_mixed_d_os(b1, b2, chimax, lmax, nl)
+            ls, cl2dos = get_cls_mixed_EP(b1, b2, chimax, lmax, nl)
             
             cl2dos_intp_list[b1].append(CubicSpline(ls, cl2dos))
-            cl32dos2_intp_list[b1].append(CubicSpline(ls, cl32dos2))
-            cl32d2os_intp_list[b1].append(CubicSpline(ls, cl32d2os))
-            cl1dos_intp_list[b1].append(CubicSpline(ls, cl1dos))
             
         ls_list.append(ls)
     
     Theta_list = []
     
-    xi2_d_eps_list = []
+    EP_list = []
     
-    xi32_d_eps2_list = []
-    
-    xi32_d2_eps_list = []
-    
-    xi1_d_eps_list = []
-    
-    for b1 in range(5):
+    for b1 in range(Nbinz_E):
         
-        xi2_d_eps_list.append([])
+        EP_list.append([])
         
-        xi32_d_eps2_list.append([])
-    
-        xi32_d2_eps_list.append([])
-    
-        xi1_d_eps_list.append([])
+        for b2 in range(Nbinz_P):
         
-        for b2 in range(5):
-        
-            Theta, xi2_d_eps_plus = get_gD_correlations(
+            Theta, EP = get_gD_correlations(
                 cl2dos_intp_list[b1][b2], Thetamin, Thetamax, nTheta)
         
-            xi2_d_eps_list[b1].append(xi2_d_eps_plus)
-        
-            Theta, xi32_d_eps2_plus = get_gD_correlations(
-                cl32dos2_intp_list[b1][b2], Thetamin, Thetamax, nTheta)
-        
-            xi32_d_eps2_list[b1].append(xi32_d_eps2_plus)
-        
-            Theta, xi32_d2_eps_plus = get_gD_correlations(
-                cl32d2os_intp_list[b1][b2], Thetamin, Thetamax, nTheta)
-        
-            xi32_d2_eps_list[b1].append(xi32_d2_eps_plus)
-        
-            Theta, xi1_d_eps_plus = get_gD_correlations(
-                cl1dos_intp_list[b1][b2], Thetamin, Thetamax, nTheta)
-        
-            xi1_d_eps_list[b1].append(xi1_d_eps_plus)
+            EP_list[b1].append(EP)
     
         Theta_list.append(Theta)
     
-    xi2_d_eps_intp = []
+    EP = []
     
-    xi32_d_eps2_intp = []
-    
-    xi32_d2_eps_intp = []
-    
-    xi1_d_eps_intp = []
-    
-    for b1 in range(5):
+    for b1 in range(Nbinz_E):
         
-        xi2_d_eps_intp.append([])
-        xi32_d2_eps_intp.append([])
-        xi32_d_eps2_intp.append([])
-        xi1_d_eps_intp.append([])
+        EP.append([])
     
-        for b2 in range(5):
+        for b2 in range(Nbinz_P):
             
-            xi2_d_eps_intp[b1].append(CubicSpline(Theta_list[b1], xi2_d_eps_list[b1][b2]))
-        
-            xi32_d_eps2_intp[b1].append(CubicSpline(Theta_list[b1], xi32_d_eps2_list[b1][b2]))
+            EP[b1].append(CubicSpline(Theta_list[b1], EP_list[b1][b2]))
             
-            xi32_d2_eps_intp[b1].append(CubicSpline(Theta_list[b1], xi32_d2_eps_list[b1][b2]))
-            
-            xi1_d_eps_intp[b1].append(CubicSpline(Theta_list[b1], xi1_d_eps_list[b1][b2]))
-            
-    print('Finished 3.3 shape position correlation functions')
+    print('Finished 3.3.3 shape position correlation functions')
     
-    add_dict(xi2_d_eps_intp, xi32_d2_eps_intp, xi32_d_eps2_intp, xi1_d_eps_intp)
+    add_dict(EP)
         
-    save_pickle(global_dict, 'correlations', f"Saved all correlations")
+    save_pickle(global_dict, f"correlations_NE={Nbinz_E}_NP={Nbinz_P}{correlation_notes}", f"Saved all correlations")
+
+load_correlations(filename=f"correlations_NE={Nbinz_E}_NP={Nbinz_P}{correlation_notes}")
+correlations_folder = f'data/{suffix}/binned_correlations'
+            
+print('Finished 3. Correlation Functions')
 
 ##############################################################################################################################
-############################################## 4 PREPARING FOR THE RUN #######################################################
+############################################## 4 ANGULAR DISTRIBUTIONS #######################################################
 ##############################################################################################################################
 
-############################################ 4.1 Defining distributions ######################################################
+from functions.angular_distributions import *       #angular distributions class
+
+if supply_binscheme:
+
+    ######## LL
+    
+    angular_distribution_LL_plus = Angular_Distributions(Nlens, binscheme=binscheme_LL_plus, Nbin_a=Nbina_LL_plus, Thetamax=Thetamax_LL_plus)
+    angular_distribution_LL_minus = Angular_Distributions(Nlens, binscheme=binscheme_LL_minus, Nbin_a=Nbina_LL_minus, Thetamax=Thetamax_LL_minus)  
+
+    ######## LE
+
+    angular_distribution_LE_plus = []
+    angular_distribution_LE_minus = []
+
+    ad_plus = Angular_Distributions(NGal, binscheme=binscheme_LE_plus, Nbin_a=Nbina_LE_plus, Thetamax=Thetamax_LE_plus)
+    ad_minus = Angular_Distributions(NGal, binscheme=binscheme_LE_minus, Nbin_a=Nbina_LE_minus, Thetamax=Thetamax_LE_minus)
+    
+    for zbin in range(Nbinz_E):
+        
+        angular_distribution_LE_plus.append(ad_plus)
+        angular_distribution_LE_minus.append(ad_minus)
+
+    ######## LP
+    
+    ad = Angular_Distributions(NGal, binscheme=binscheme_LP, Nbin_a=Nbina_LP, Thetamax=Thetamax_LP)
+    
+    for zbin in range(Nbinz_P):
+        
+        angular_distribution_LP_plus.append(ad)
+    
+else:
+    get_item('LL_plus', 'LL_plus_primitive', 'LL_minus', 'LL_minus_primitive', 'LE_plus', 'LE_plus_primitive', 'LE_minus', 'LE_minus_primitive', 'LP', 'LP_primitive')
+
+    ######## LL
+    
+    binscheme_LL_plus = optimise_bins(LL_plus, 'LL', LL_plus_primitive, b = None, SNR_goal = SNR_goal_LL_plus, Nbin_max = Nbin_max_LL_plus, SNR_min = SNR_min_LL_plus)
+    binscheme_LL_minus = optimise_bins(LL_minus, 'LL', LL_minus_primitive, b = None, SNR_goal = SNR_goal_LL_minus, Nbin_max = Nbin_max_LL_minus, SNR_min = SNR_min_LL_minus)
+
+    angular_distribution_LL_plus = Angular_Distributions(Nlens, binscheme=binscheme_LL_plus, Nbin_a = None, Thetamax=Thetamax_LL_plus)
+    angular_distribution_LL_minus = Angular_Distributions(Nlens, binscheme=binscheme_LL_minus, Nbin_a = None, Thetamax=Thetamax_LL_minus)  
+
+    ######## LE
+
+    binscheme_LE_plus = []
+    binscheme_LE_minus = []
+
+    angular_distribution_LE_plus = []
+    angular_distribution_LE_minus = []
+    
+    for zbin in range(Nbinz_E):
+        
+        binscheme_LE_plus.append(optimise_bins(LE_plus[zbin], 'LE', LE_plus_primitive[zbin], b = zbin, SNR_goal = SNR_goal_LE_plus, Nbin_max = Nbin_max_LE_plus, SNR_min = SNR_min_LE_plus))
+        binscheme_LE_minus.append(optimise_bins(LE_minus[zbin], 'LE', LE_minus_primitive[zbin], b = zbin, SNR_goal = SNR_goal_LE_minus, Nbin_max = Nbin_max_LE_minus, SNR_min = SNR_min_LE_minus))
+        
+        angular_distribution_LE_plus.append(Angular_Distributions(NGal, binscheme=binscheme_LE_plus[zbin], Nbin_a = None, Thetamax=Thetamax_LE_plus))
+        angular_distribution_LE_minus.append(Angular_Distributions(NGal, binscheme=binscheme_LE_minus[zbin], Nbin_a = None, Thetamax=Thetamax_LE_minus))
+
+    ######## LP
+
+    binscheme_LP = []
+
+    angular_distribution_LP = []
+    
+    for zbin in range(Nbinz_P):
+        
+        binscheme_LP.append(optimise_bins(LP[zbin], 'LP', LP_primitive[zbin], b = zbin, SNR_goal = SNR_goal_LP, Nbin_max = Nbin_max_LP, SNR_min = SNR_min_LP))
+        
+        angular_distribution_LP.append(Angular_Distributions(NGal, binscheme=binscheme_LP[zbin], Nbin_a = None, Thetamax=Thetamax_LP))
+
+    print(f'binscheme LL_plus: {binscheme_LL_plus}')
+    print(f'binscheme LL_minus: {binscheme_LL_minus}')
+    print(f'binscheme LE_plus: {binscheme_LE_plus}')
+    print(f'binscheme LE_minus: {binscheme_LE_minus}')
+    print(f'binscheme_LP: {binscheme_LP}')
+
+angular_distributions = {"LL_plus" : angular_distribution_LL_plus,
+                         "LL_minus" : angular_distribution_LL_minus,
+                         "LE_plus" : angular_distribution_LE_plus,
+                         "LE_minus" : angular_distribution_LE_minus,
+                         "LP" : angular_distribution_LP}
+
+save_pickle(angular_distributions, f'data/{suffix}/angular_distributions', f"Saved angular distributions")
+add_dict(angular_distributions)
+
+print('Finished 4. Angular Distributions')
+
+##############################################################################################################################
+############################################## 5 PREPARING FOR THE RUN #######################################################
 ##############################################################################################################################
 
-from functions.distributions_and_correlations import *
-
-distribution_LL = Distributions(Nlens, binscheme=binscheme_LL, Nbina=Nbina_LL, Thetamax=Thetamax_LL) 
-distribution_Le = Distributions(NGal, binscheme=binscheme_Le, Nbina=Nbina_Le, Thetamax=Thetamax_Le)
-distribution_Lp = Distributions(NGal, binscheme=binscheme_Lp, Nbina=Nbina_Lp, Thetamax=Thetamax_Lp)
-
-distributions = {"LL": distribution_LL,
-                "Le": distribution_Le,
-                "Lp": distribution_Lp}
-
-save_pickle(distributions, 'distributions', f"Saved all distributions")
-
-print(f"Successfully defined distribution functions.")
-
-############################################### 4.2 Creating .txt file ########################$##############################
+########################################## 5.1 Saving binned correlations ####################################################
 ##############################################################################################################################
+
+os.makedirs(correlations_folder, exist_ok=True)
+
+LL_binned = generate_binned_correlation('LL', 0)
+
+save_pickle(LL_binned, f"{correlations_folder}/LL", f"correlation=LL")
+
+for b1 in range(Nbinz_E):
+
+    LE_binned = generate_binned_correlation('LE', b1)
+    save_pickle(LE_binned, f"{correlations_folder}/LE{b1}", f"b1={b1}, correlation=LE")
+
+for b1 in range(Nbinz_P):
+
+    LP_binned = generate_binned_correlation('LP', b1)
+    save_pickle(LP_binned, f"{correlations_folder}/LP{b1}", f"b1={b1}, correlation=LP")
+
+############################################### 5.2 Creating .txt file ########################$##############################
+##############################################################################################################################
+
 
 # Output file name
 task_file = "tasks.txt"
 
-print(b1_values)
+lines = []
 
-# Open file to write task commands
+Elist = list(range(Nbinz_E))
+Plist = list(range(Nbinz_P))
+
+# Full (b1, b2) iteration
+for cov_matrix in cov_matrices_full:
+    for cov_type in cov_types:
+        if cov_matrix == 'LELP':
+            b1b2_pairs = [(i, j) for i in Elist for j in Plist]
+        elif cov_matrix == 'LELE':
+            b1b2_pairs = [(i, j) for i in Elist for j in Elist if i <= j]
+        elif cov_matrix == 'LPLP':
+            b1b2_pairs = [(i, j) for i in Plist for j in Plist if i <= j]
+
+        for b1, b2 in b1b2_pairs:
+            lines.append(f"{b1} {b2} {cov_matrix} {cov_type}")
+
+for cov_matrix in cov_matrices_b1:
+    # Choose b1_values depending on cov_matrix
+    if cov_matrix == 'LLLE':
+        b1_values = Elist
+    elif cov_matrix == 'LLLP':
+        b1_values = Plist
+    else:
+        raise ValueError(f"Unknown cov_matrix type: {cov_matrix}")
+
+    for b1 in b1_values:
+        for cov_type in cov_types:
+            lines.append(f"{b1} {cov_matrix} {cov_type}")
+
+# No b1, b2 iteration (only one call)
+for cov_matrix in cov_matrices_no_b:
+    for cov_type in cov_types:
+        lines.append(f"{cov_matrix} {cov_type}")
+
+# Write all lines without trailing newline
 with open(task_file, "w") as f:
-    # Full (b1, b2) iteration
-    for b1, b2 in product(b1_values, b2_values):
-        for cov_matrix in cov_matrices_full:
-            for cov_type in cov_types:
-                f.write(f"{b1} {b2} {cov_matrix} {cov_type}\n")
-
-    # Single b1 iteration
-    for cov_matrix, b1 in product(cov_matrices_b1, b1_values):
-        for cov_type in cov_types:
-            f.write(f"{b1} None {cov_matrix} {cov_type}\n")
-
-    # No b1, b2 iteration (only one call)
-    for cov_matrix in cov_matrices_no_b:
-        for cov_type in cov_types:
-            f.write(f"None None {cov_matrix} {cov_type}\n")
+    f.write("\n".join(lines))
 
 print(f"Task file '{task_file}' created successfully with all required jobs.")
+
+############################################### 5.3 Creating .sh file ########################$##############################
+##############################################################################################################################
+
+ntasks = 2*(Nbinz_E * Nbinz_P + Nbinz_E + Nbinz_P + 1) + Nbinz_E * (Nbinz_E + 1) + Nbinz_P * (Nbinz_P + 1)
+ncpus = min(ntasks, max_cpus)
+
+job_name = f"all_covariance"
+output_dir = f"output{suffix}"
+
+runtime_log = f"runtime_{format_sci(nsamp)}.log"
+
+if os.path.exists(runtime_log):
+    os.remove(runtime_log)
+    
+lockfile = f"/tmp/runtime_{format_sci(nsamp)}.lock"
+
+script_content = f"""#!/bin/bash
+
+#SBATCH --job-name={job_name}
+#SBATCH --output={output_dir}/parallel-job-output_%A_%a.log
+#SBATCH --error={output_dir}/parallel-job-error_%A_%a.log
+#SBATCH --mail-user=daniel.johnson@umontpellier.fr
+#SBATCH --mail-type=TIME_LIMIT_80
+#SBATCH --time=5-00:00:00
+#SBATCH --array=0-{int(ntasks-1)}%{ncpus}
+#SBATCH --mem=10000
+#SBATCH --partition=lupm
+#SBATCH --exclude=tumce[2-4]
+#SBATCH --dependency=singleton
+
+source ~/lenstronomyenv/bin/activate
+
+# Record start time
+start_time=$(date +%s)
+
+# Read task from task list
+TASK_FILE="tasks.txt"
+TASK=$(sed -n "$((SLURM_ARRAY_TASK_ID+1))p" ${{TASK_FILE}})
+
+# Run the corresponding task
+python -u job.py ${{TASK}}
+
+# Record end time
+end_time=$(date +%s)
+runtime_seconds=$((end_time - start_time))
+runtime_minutes=$((runtime_seconds / 60))
+
+# Log runtime with task parameters safely
+{{
+  flock -x 201
+  echo "Job ${{SLURM_ARRAY_TASK_ID}} | Task: ${{TASK}} | Runtime: ${{runtime_minutes}} min (${{runtime_seconds}} sec)" >> {runtime_log}
+}} 201>{lockfile}
+
+cat {output_dir}/parallel-job-output_${{SLURM_ARRAY_JOB_ID}}_*.log > {output_dir}/combined_output.log
+cat {output_dir}/parallel-job-error_${{SLURM_ARRAY_JOB_ID}}_*.log > {output_dir}/combined_errors.log
+"""
+
+with open("parallel_jobs.sh", "w") as f:
+    f.write(script_content)
+
+print(f"Slurm file created.")

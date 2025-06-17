@@ -27,10 +27,14 @@ def get_correlations(cl_intp, Thetamin, Thetamax, nTheta=nTheta):
     logThetamax = np.log10(Thetamax)
     Theta = np.logspace(logThetamin, logThetamax, nTheta)
     Theta = np.append([0], Theta)
+    
     xi_plus = ht0.transform(cl_intp, Theta, ret_err=False)/(2*np.pi)
     xi_minus = ht4.transform(cl_intp, Theta, ret_err=False)/(2*np.pi)
     
-    return Theta, xi_plus, xi_minus
+    xi_p = (1/2) * (xi_plus + xi_minus)
+    xi_x = (1/2) * (xi_plus - xi_minus)
+    
+    return Theta, xi_p, xi_x, xi_plus, xi_minus
 
 def get_DD_correlations(cl_DD_intp, Thetamin, Thetamax, nTheta=nTheta):
 	"""

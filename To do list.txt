@@ -1,28 +1,15 @@
-3. Figure out the asymmetry in my Omegas[a1] vs Omegas[a2] (in the notes - for LeLe and LLLe as well)
-5. In the notes, in the expression for sparsity covariance in the LLLe case (and maybe elsewhere), I've left out some redshift bins b)
-11. Figure out why I'm getting negative values of the diagonal (Pierre thinks I might be evaluating integrals past the extrapolation limits of my integrals)
-13. fix approximations 
-
-Questions:
-
-1. I might need someone to go through and check that my arcmin vs degrees is all fine
-2. I changed Theo's sparsity covariance calculation a fair bit, and I need him to check it
-
-SUSPICION!! High integration errors are coming from the weak discontinuity in the correlation function?
+1. Fix calculation of L0 and E0 ! Need to be sure it's correct
+2. NB make sure graph is presented correctly (LELP vs LPLE etc)
+3. choose optimal thetamin
+5. do some plots to see if constant term does indeed dominate diagonal
+6. cosmos web stats! Small field with good statistics
 
 Future work:
-
-1.  Parallelise correlation functions calculation (non-trivial)
-2. When I move onto 'eeee' etc, I will need to generalise my redshift bin indexing in plotter.ipynb, and elsewhere probably
-3. fix commenting
-4. Could make code more efficient by using symmetries 
-5.  redefine things such that unecessary arguments are removed from the covariance matrices?
-6. Maybe replace W_d_mean_intp with W_d_intp. Less patterny, but makes more sense
-7. check that nquad etc are actually running quickly
-8. When we generalise to include eeee and so on, for my xi32_eps, I will need to be careful about which redshift bins are shared and which are marginalised over
-9. In LLLe, my timing dictionaries assume I have b1 and b2, but actually I only have b1
-10. The kernel32 for d needs checking (though it isn't currently being used)
 
 2502.12843 - we can use measurements of the Weyl potential to constrain the 5th force, ie dark matter interactions
 
 Logic -> we measure the Weyl power spectrum, and hence everything which can be learnt from it
+
+NB once the noise becomes smaller than sqrt(L0), nothing much is gained by improving the precision of the measurement. At this stage we just need more measurements
+
+We can get a pretty quick idea of how comparable the LL signal is with the EE signal by dividing the noise squared by the number of objects (do some tests)
