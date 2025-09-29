@@ -59,7 +59,7 @@ class Redshift_Distributions:
                 sol = root_scalar(lambda z: self.cdf(z) - target, bracket=[0, self.zmax_dist], method='brentq')  #looking for the solution z to the equation cdf(z) - target = 0, within [0, zmax]
                 bin_edges.append(sol.root) #whatever that solution is gets appended as the new bin edge
                 
-            bin_edges.append(zmax) #we then close the last bin
+            bin_edges.append(zmax_dist) #we then close the last bin
     
             self.limits = np.array(bin_edges)
 

@@ -78,8 +78,8 @@ def generate_ccov_LLLP(D):
             psi_jd = cos_law_angle(r_kd, r_jd, r_kj) + psi_kd
     
             f = ( LP[D](r_jd) * cos2(psi_jd - psi_j)
-                * ( LLp(r_k) * sin2(psi_j) * cos2(psi_kd)
-                  - LLx(r_k) * cos2(psi_j) * sin2(psi_kd)
+                * ( LLx(r_k) * cos2(psi_j) * sin2(psi_kd)
+                  - LLp(r_k) * sin2(psi_j) * cos2(psi_kd)
                   ) )
     
             f *= 2 * np.pi * r_k * r_j * r_kd

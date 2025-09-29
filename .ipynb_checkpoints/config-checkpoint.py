@@ -98,14 +98,14 @@ else:
 
     SNR_goal = 8
     Nbin_max = 20          #this should dictate the maximum number of angular bins, but it won't be exact, and relies on an empirical relationship
-    SNR_min = 2
+    SNR_min = 2.5
     theta_resolution = 1000  #the number of thetas in the linspace with which we obtain the max theta and calculate the "total SNR"
 
-    SNR_goal_LL_plus = 5
+    SNR_goal_LL_plus = 6
     Nbin_max_LL_plus =  Nbin_max
     SNR_min_LL_plus = SNR_min 
 
-    SNR_goal_LL_minus = 5
+    SNR_goal_LL_minus = 6
     Nbin_max_LL_minus =  Nbin_max
     SNR_min_LL_minus = SNR_min
 
@@ -218,7 +218,7 @@ cov_types = ["ccov", "ncov"]
 
 ####################### the suffix defining the folder names ###############################################
 
-notes = 'Nsamp=1e7' #anything particularly unique about a particular run (eg different redshift binning)
+notes = 'nsamp=1e7' #anything particularly unique about a particular run (eg different redshift binning)
 correlation_notes = ''    #needed only to specify that a particular binscheme has been used
 
 def format_sci(n):
@@ -226,11 +226,11 @@ def format_sci(n):
 
 if supply_binscheme == True:
 
-    suffix = f'Nlens={format_sci(Nlens)}_sigL={sigma_L}_Nbin_z={Nbin_z}_Nbina={Nbina}{notes}'
+    suffix = f'Nlens={format_sci(Nlens)}_sigL={sigma_L}_Nbin_z={Nbin_z}_Nbina={Nbina}_{notes}'
 
 if supply_binscheme == False:
 
-    suffix = f'Nlens={format_sci(Nlens)}_sigL={sigma_L}_Nbin_z={Nbin_z}_SNR_goal={SNR_goal}_Nbin_max={Nbin_max}{notes}'
+    suffix = f'Nlens={format_sci(Nlens)}_sigL={sigma_L}_Nbin_z={Nbin_z}_SNR_goal={SNR_goal}_Nbin_max={Nbin_max}_{notes}'
     
 
 if not os.path.exists(f'correlations_NE={Nbinz_E}_NP={Nbinz_P}{correlation_notes}'):

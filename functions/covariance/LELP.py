@@ -79,9 +79,9 @@ def generate_ccov_LELP(B, D):
             psi_bd = cos_law_angle(r_kd, r_bd, r_kb) + psi_kd
     
             f = ( EP[B][D](r_bd) * cos2(psi_bd - psi_b)
-                * (LLp(r_k) * sin2(psi_b) * cos2(psi_kd) - LLx(r_k) * cos2(psi_b) * sin2(psi_kd))
+                * (LLx(r_k) * cos2(psi_b) * sin2(psi_kd) - LLp(r_k) * sin2(psi_b) * cos2(psi_kd))
                 + LP[D](r_bd) * cos2(psi_bd-psi_b)
-                * (LEp[B](r_k) * sin2(psi_b) * cos2(psi_kd) - LEx[B](r_k) * cos2(psi_b) * sin2(psi_kd))
+                * (LEx[B](r_k) * cos2(psi_b) * sin2(psi_kd) - LEp[B](r_k) * sin2(psi_b) * cos2(psi_kd))
                 )
             
             f *= 2 * np.pi * r_k * r_b * r_kd

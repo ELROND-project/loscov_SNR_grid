@@ -1,11 +1,11 @@
 #!/bin/bash
 
 #SBATCH --job-name=all_covariance
-#SBATCH --output=outputNlens=1e5_sigL=0.05_Nbin_z=6_SNR_goal=8_Nbin_max=20Nsamp=1e7/parallel-job-output_%A_%a.log
-#SBATCH --error=outputNlens=1e5_sigL=0.05_Nbin_z=6_SNR_goal=8_Nbin_max=20Nsamp=1e7/parallel-job-error_%A_%a.log
+#SBATCH --output=outputNlens=1e5_sigL=0.05_Nbin_z=6_SNR_goal=8_Nbin_max=60_nsamp=1e7_real/parallel-job-output_%A_%a.log
+#SBATCH --error=outputNlens=1e5_sigL=0.05_Nbin_z=6_SNR_goal=8_Nbin_max=60_nsamp=1e7_real/parallel-job-error_%A_%a.log
 #SBATCH --mail-user=daniel.johnson@umontpellier.fr
 #SBATCH --mail-type=TIME_LIMIT_80
-#SBATCH --time=5-00:00:00
+#SBATCH --time=15-00:00:00
 #SBATCH --array=0-181%182
 #SBATCH --mem=10000
 #SBATCH --partition=lupm
@@ -35,5 +35,5 @@ runtime_minutes=$((runtime_seconds / 60))
   echo "Job ${SLURM_ARRAY_TASK_ID} | Task: ${TASK} | Runtime: ${runtime_minutes} min (${runtime_seconds} sec)" >> runtime_1e7.log
 } 201>/tmp/runtime_1e7.lock
 
-cat outputNlens=1e5_sigL=0.05_Nbin_z=6_SNR_goal=8_Nbin_max=20Nsamp=1e7/parallel-job-output_${SLURM_ARRAY_JOB_ID}_*.log > outputNlens=1e5_sigL=0.05_Nbin_z=6_SNR_goal=8_Nbin_max=20Nsamp=1e7/combined_output.log
-cat outputNlens=1e5_sigL=0.05_Nbin_z=6_SNR_goal=8_Nbin_max=20Nsamp=1e7/parallel-job-error_${SLURM_ARRAY_JOB_ID}_*.log > outputNlens=1e5_sigL=0.05_Nbin_z=6_SNR_goal=8_Nbin_max=20Nsamp=1e7/combined_errors.log
+cat outputNlens=1e5_sigL=0.05_Nbin_z=6_SNR_goal=8_Nbin_max=60_nsamp=1e7_real/parallel-job-output_${SLURM_ARRAY_JOB_ID}_*.log > outputNlens=1e5_sigL=0.05_Nbin_z=6_SNR_goal=8_Nbin_max=60_nsamp=1e7_real/combined_output.log
+cat outputNlens=1e5_sigL=0.05_Nbin_z=6_SNR_goal=8_Nbin_max=60_nsamp=1e7_real/parallel-job-error_${SLURM_ARRAY_JOB_ID}_*.log > outputNlens=1e5_sigL=0.05_Nbin_z=6_SNR_goal=8_Nbin_max=60_nsamp=1e7_real/combined_errors.log
