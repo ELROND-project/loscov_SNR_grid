@@ -7,7 +7,7 @@ get_item('chid', 'chis')
 
 ################################################ LOS Weight function #####################################################
 
-def W_LOS(chi, chidd, chiss):
+def K_LOS(chi, chidd, chiss):
     """
     LOS weight function
 
@@ -15,37 +15,61 @@ def W_LOS(chi, chidd, chiss):
     chidd : the comoving distance to the lens
     chiss : the comoving distance to the source
     """
-    os = chi * (chiss - chi) / chiss #the weight function for gamma_os
-    od = chi * (chidd - chi) / chidd #the weight function for gamma_od
-    ds = (chi - chidd) * (chis - chi) / (chiss - chidd) #the weight function for gamma_ds
+        
+    os = (chiss - chi) / chiss #the weight function for gamma_os
+    od = (chidd - chi) / chidd #the weight function for gamma_od
+    ds = (chi - chidd) * (chis - chi) / (chi * (chiss - chidd) ) #the weight function for gamma_ds
 
     #the actual weight function
-    W  = (os * np.heaviside(os, 0)    #returns 0 if os is negative
+    K  = (os * np.heaviside(os, 0)    #returns 0 if os is negative
           + od * np.heaviside(od, 0)
           - ds * np.heaviside(ds, 0))
     
-    return W
+    return K
 
-def W_LOS_mean(chi):
+def K_LOS_mean(chi):
     """
-    Redshift-averaged LOS weight function (W_LOS,eff(chi) in the above)
+    Redshift-averaged LOS weight function
     
     chi : an inputted comoving distance
     """
-    W = np.mean(W_LOS(chi, chid, chis))
+    K = np.mean(K_LOS(chi, chid, chis))
     
-    return W
+    return K
 
-def WW_LOS_mean(chi):
+def Q_LOS_mean(chi):
+    """
+    Redshift-averaged LOS integration kernel
+    
+    chi : an inputted comoving distance
+    """
+    redshift = background.redshift_at_comoving_radial_distance(chi)
+    
+    Q = 1.5 * Omega_M * (H0/(c*1e-3))**2 * (1+redshift) * K_LOS_mean(chi)
+    
+    return Q
+
+def KK_LOS_mean(chi):
     """
     Redshift-averaged LOS weight function squared
 
     chi : the comoving distance
     """
-    WW = np.mean(W_LOS(chi, chid, chis) * W_LOS(chi, chid, chis))
+    KK = np.mean(K_LOS(chi, chid, chis) * K_LOS(chi, chid, chis))
     
-    return WW
+    return KK
 
+def QQ_LOS_mean(chi):
+    """
+    Redshift-averaged LOS integration kernel squared
+    
+    chi : an inputted comoving distance
+    """
+    redshift = background.redshift_at_comoving_radial_distance(chi)
+    
+    QQ = (1.5 * Omega_M * (H0/(c*1e-3))**2 * (1+redshift))**2 * KK_LOS_mean(chi)
+    
+    return QQ
 
 ################################################ Getting cls #####################################################
 
@@ -56,7 +80,7 @@ def get_cl_L(chimax, lmax, nl):
     nl is the number of values to be computed.
     """
 
-    get_item('W_LOS_mean_intp', 'WW_LOS_rms_intp')
+    get_item('Q_LOS_mean_intp', 'QQ_LOS_rms_intp')
     
     nz = 100 #number of elements for discrete integral along the los
     
@@ -69,10 +93,13 @@ def get_cl_L(chimax, lmax, nl):
     dchis = (chis[2:]-chis[:-2])/2
     chis = chis[1:-1]
     zs = zs[1:-1]
+
+    #the CAMB correction
+    CAMB_factor = ( (1.5*Omega_M*(H0/(c*1e-3))**2)**(-1) ) * (1+zs)**(-1)
     
-    # Lensing kernel (here LOS shear)
-    kernel2 = W_LOS_mean_intp(chis)**2 / chis**2
-    kernel1 = WW_LOS_rms_intp(chis)**2 / chis**2
+    # Lensing kernel (here LOS shear) with correction for CAMB units 
+    kernel2 = Q_LOS_mean_intp(chis)**2 * CAMB_factor**2
+    kernel1 = QQ_LOS_rms_intp(chis)**2 * CAMB_factor**2
     
     # Integration over chi
     lmin = 1

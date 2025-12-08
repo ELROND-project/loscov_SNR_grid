@@ -15,21 +15,18 @@ get_item('redshift_distributions')
 def bias(z):
     return 1.1*z**2.4/(1+z)+0.9
 
-#the "weight function" (the equivalent of W_mean in os and LOS)
-def W_d(chi, b):
+#the "weight function" (the equivalent of Q_mean in os and LOS)
+def Q_d(chi, b):
 
     redshift = background.redshift_at_comoving_radial_distance(chi)
 
-    prefactor =  (2/3) * np.sqrt(Omega_M*(1+redshift)**3+Omega_L)/((H0/(c*1e-3))*Omega_M*(1+redshift)) 
+    H = H0 * np.sqrt(Omega_M*(1+redshift)**3+Omega_L) / (c*1e-3)
+    
+    return redshift_distributions['P'].pb(redshift, b) * H * bias(redshift) / chi
 
-    #technically there is a negative sign before the prefactor - however, this cancels out further down the line, meaning that we choose to omit it here rather than cancelling it later
+def QQ_d(chi, b):
     
-    return prefactor * redshift_distributions['P'].pb(redshift, b) * bias(redshift) 
-
-def WW_d(chi, b):
-    
-    return W_d(chi, b)**2   
-    
+    return Q_d(chi, b)**2   
 
 ################################################ Getting cls #####################################################
 
@@ -42,7 +39,7 @@ def get_cl_P(b1, b2, chimax, lmax, nl):
     returns an array of ls and the corresponding array of Cls
     """
 
-    get_item('W_d_intp', 'WW_d_rms_intp') #these are just interpolated versions of the weight functions
+    get_item('Q_d_intp', 'QQ_d_rms_intp') #these are just interpolated versions of the weight functions
     
 	# Integration over chi
     lmin = 1
@@ -65,8 +62,11 @@ def get_cl_P(b1, b2, chimax, lmax, nl):
         chis = chis[1:-1]
         zs = zs[1:-1]
 
-		# Everything in the integrand except Weyl power spectrum
-        kernel2 = W_d_intp[b1](chis) * W_d_intp[b2](chis) / chis**2
+        #the CAMB correction
+        CAMB_factor = ( (1.5*Omega_M*(H0/(c*1e-3))**2)**(-1) ) * (1+zs)**(-1)
+
+		# kernel (here weak galaxy positions) with correction for CAMB units  
+        kernel2 = Q_d_intp[b1](chis) * Q_d_intp[b2](chis)  * CAMB_factor**2
 
         w = np.ones(chis.shape) #this is just used to set to zero k values out of range of interpolation
 

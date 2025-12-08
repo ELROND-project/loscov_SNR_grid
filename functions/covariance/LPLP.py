@@ -36,6 +36,7 @@ def generate_ccov_LPLP(B, D):
     
     # Initialise the blocks
     ccov = np.zeros((Nbin1, Nbin2))
+    err = np.zeros((Nbin1, Nbin2))
     
     # Define the integrands (complete from here)
     
@@ -77,20 +78,21 @@ def generate_ccov_LPLP(B, D):
     for alpha in range(Nbin1):
         for beta in range(Nbin2): 
                      
-            ccov[alpha, beta], err = integral_bins(integrand, alpha, beta)
+            ccov[alpha, beta], err[alpha, beta] = integral_bins(integrand, alpha, beta)
 
-            test_err(err, ccov[alpha, beta], f'LPLP ccov redshifts {B, D} angular bins {alpha, beta}')
+            test_err(err[alpha, beta], ccov[alpha, beta], f'LPLP ccov redshifts {B, D} angular bins {alpha, beta}')
             
     
     # Make the full cosmic covariance matrix
 
     ccov = np.block([[ccov]])
+    err = np.block([[err]])
     
-    return ccov
+    return ccov, err
 
 ################################################## LPLP noise/sparsity covariance #############################################################
 
-def generate_ncov_LPLP(B, D):
+def generate_ncov_LPLP(sigma_L, Nlens, B, D):
     """
     Computes the contribution of noise and sparsity variance in the 
     covariance matrix of the LOS shear - galaxy position correlation functions.
@@ -117,6 +119,9 @@ def generate_ncov_LPLP(B, D):
     # Initialise the blocks
     ncov = np.zeros((Nbin1, Nbin2))
     scov = np.zeros((Nbin1, Nbin2))
+    
+    nerr = np.zeros((Nbin1, Nbin2))
+    serr = np.zeros((Nbin1, Nbin2))
     
     # Define the integrands
     
@@ -176,10 +181,10 @@ def generate_ncov_LPLP(B, D):
             intt, err = integral_bins(integrand, alpha, beta)
                      
             ncov[alpha, beta] = (sigma_L**2/Nlens) * intt[0]     
-            nerr = (sigma_L**2/Nlens) * err[0]
+            nerr[alpha, beta] = (sigma_L**2/Nlens) * err[0]
                      
             scov[alpha, beta] = (L0/Nlens) * intt[0]     
-            serr = (L0/Nlens) * err[0]
+            serr[alpha, beta] = (L0/Nlens) * err[0]
 
             if B == D:
                 ncov[alpha, beta] += (1/G_B) * intt[1]  
@@ -189,12 +194,15 @@ def generate_ncov_LPLP(B, D):
                     ncov[alpha, beta] += (1/2) * (sigma_L**2 / (Nlens*G_B) ) * (Omegatot/Omegas1[alpha])
                     scov[alpha, beta] += (1/2) * (L0 / (Nlens*G_B) ) * (Omegatot/Omegas1[alpha])
 
-            test_err(nerr, ncov[alpha, beta], f'LPLP ncov redshifts {B, D} angular bins {alpha, beta}')
-            test_err(serr, scov[alpha, beta], f'LPLP scov redshifts {B, D} angular bins {alpha, beta}')
+            test_err(nerr[alpha, beta], ncov[alpha, beta], f'LPLP ncov redshifts {B, D} angular bins {alpha, beta}')
+            test_err(serr[alpha, beta], scov[alpha, beta], f'LPLP scov redshifts {B, D} angular bins {alpha, beta}')
             
     # Make the full cosmic covariance matrix
 
     ncov = np.block([[ncov]])
     scov = np.block([[scov]])
+
+    nerr = np.block([[nerr]])
+    serr = np.block([[serr]])
     
-    return [ncov, scov]
+    return [ncov, scov], [nerr, serr]

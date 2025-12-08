@@ -11,24 +11,25 @@ get_item('redshift_distributions')
 
 #################################################### d Weight Function ######################################################
 
-def W_os(chi, chis):
+def K_os(chi, chiss):
     """
     weak lensing weight function, which tells us the relative contribution of matter
     at chi to the weak lensing of a source at chis
 
     chi : an inputted value of comoving distance
-    chis : the comoving distance to the source
+    chiss : the comoving distance to the source
     """
-    os = chi * (chis - chi) / chis #the weight function for gamma_os
+
+    os = (chiss - chi) / chiss #the weight function for gamma_os
 
     #the actual weight function
-    W  = os * np.heaviside(os, 0)    #returns 0 if os is negative
+    K  = os * np.heaviside(os, 0)    #returns 0 if os is negative
     
-    return W
+    return K
 
-def W_os_mean(chi, b):
+def K_os_mean(chi, b):
     """
-    Redshift-averaged os weight function
+    Redshift-averaged weight lensing weight function 
 
     chi : an inputted comoving distance
     b   : the redshift bin in question
@@ -43,17 +44,30 @@ def W_os_mean(chi, b):
         p_b = redshift_distributions['E'].pb(z_source, b)                     #the probability associated with a source being at z_source (in redshift bin b)
         chi_source = background.comoving_radial_distance(z_source)            #the comoving distance to the source at z_source
         
-        return p_b*W_os(chi,chi_source) 
+        return p_b * K_os(chi,chi_source) 
 
     #we integrate our weighting function over all the source positions in the relevant bin
-    W, err = integrate.quad(integrand, z_min, z_max)
+    K, err = integrate.quad(integrand, z_min, z_max)
     
-    return W
+    return K
 
-def WW_os_mean(chi, b):
+def Q_os_mean(chi,b):
+    """
+    os integration kernel
+
+    chi : an inputted value of comoving distance
+    chiss : the comoving distance to the source
+    """
+    redshift = background.redshift_at_comoving_radial_distance(chi)
+    
+    Q = 1.5 * Omega_M * (H0/(c*1e-3))**2 * (1+redshift) * K_os_mean(chi,b)
+    
+    return Q
+
+def KK_os_mean(chi, b):
     
     """
-    Redshift-averaged os weight function
+    Redshift-averaged weak lensing weight function squared
 
     chi : an inputted comoving distance
     b   : the redshift bin in question
@@ -68,12 +82,25 @@ def WW_os_mean(chi, b):
         p_b = redshift_distributions['E'].pb(z_source, b)            #the probability associated with a source being at z_source (in redshift bin b)
         chi_source = background.comoving_radial_distance(z_source)   #the comoving distance to the source at z_source
         
-        return p_b*W_os(chi,chi_source)*W_os(chi,chi_source) 
+        return p_b * K_os(chi,chi_source) * K_os(chi,chi_source) 
     
     #we integrate our weighting function over all the source positions in the relevant bin
-    W, err = integrate.quad(integrand,z_min, z_max)
+    K, err = integrate.quad(integrand,z_min, z_max)
     
-    return W
+    return K
+
+def QQ_os_mean(chi,b):
+    """
+    os integration kernel squared
+
+    chi : an inputted value of comoving distance
+    chiss : the comoving distance to the source
+    """
+    redshift = background.redshift_at_comoving_radial_distance(chi)
+    
+    Q = (1.5 * Omega_M * (H0/(c*1e-3))**2 * (1+redshift))**2 * KK_os_mean(chi,b)
+    
+    return Q
 
 def get_cl_E(b1, b2, chimax, lmax, nl):
     """
@@ -84,7 +111,7 @@ def get_cl_E(b1, b2, chimax, lmax, nl):
     b  : redshift bin in question (1 to 5)
     """
 
-    get_item('W_os_mean_intp', 'WW_os_rms_intp')
+    get_item('Q_os_mean_intp', 'QQ_os_rms_intp')
     
     nz = 100 #number of elements for discrete integral along the los
     
@@ -97,10 +124,13 @@ def get_cl_E(b1, b2, chimax, lmax, nl):
     dchis = (chis[2:]-chis[:-2])/2
     chis = chis[1:-1]
     zs = zs[1:-1]
+
+    #the CAMB correction
+    CAMB_factor = ( (1.5*Omega_M*(H0/(c*1e-3))**2)**(-1) ) * (1+zs)**(-1)
     
-    # Lensing kernel (here weak lensing shear)    
-    kernel2 = W_os_mean_intp[b1](chis)*W_os_mean_intp[b2](chis) / chis**2
-    kernel1 = WW_os_rms_intp[b1](chis)*WW_os_rms_intp[b2](chis) / chis**2 
+    # Lensing kernel (here weak lensing shear) with correction for CAMB units    
+    kernel2 = Q_os_mean_intp[b1](chis) * Q_os_mean_intp[b2](chis) * CAMB_factor**2
+    kernel1 = QQ_os_rms_intp[b1](chis) * QQ_os_rms_intp[b2](chis) * CAMB_factor**2 
     
     # Integration over chi
     lmin = 1

@@ -39,6 +39,11 @@ def generate_ccov_LLLL():
         ccov_xp = np.zeros((Nbin1, Nbin2))
         ccov_xx = np.zeros((Nbin1, Nbin2))
         
+        err_pp = np.zeros((Nbin1, Nbin2))
+        err_px = np.zeros((Nbin1, Nbin2))
+        err_xp = np.zeros((Nbin1, Nbin2))
+        err_xx = np.zeros((Nbin1, Nbin2))
+        
         # Define the integrands (complete from here)
         
         def integrand_pp(params):
@@ -142,50 +147,55 @@ def generate_ccov_LLLL():
         for alpha in range(Nbin1):
             for beta in range(Nbin2): 
                          
-                ccov_pp[alpha, beta], err_pp = integral_bins(integrand_pp, alpha, beta)
-                ccov_px[alpha, beta], err_px = integral_bins(integrand_px, alpha, beta)
-                ccov_xp[alpha, beta], err_xp = integral_bins(integrand_xp, alpha, beta)
-                ccov_xx[alpha, beta], err_xx = integral_bins(integrand_xx, alpha, beta)
+                ccov_pp[alpha, beta], err_pp[alpha, beta] = integral_bins(integrand_pp, alpha, beta)
+                ccov_px[alpha, beta], err_px[alpha, beta] = integral_bins(integrand_px, alpha, beta)
+                ccov_xp[alpha, beta], err_xp[alpha, beta] = integral_bins(integrand_xp, alpha, beta)
+                ccov_xx[alpha, beta], err_xx[alpha, beta] = integral_bins(integrand_xx, alpha, beta)
     
-                test_err(err_pp, ccov_pp[alpha, beta], f'LLLL ccov plus plus angular bins {alpha, beta}')
-                test_err(err_px, ccov_px[alpha, beta], f'LLLL ccov plus times angular bins {alpha, beta}')
-                test_err(err_xp, ccov_xp[alpha, beta], f'LLLL ccov times plus angular bins {alpha, beta}')
-                test_err(err_xx, ccov_xx[alpha, beta], f'LLLL ccov times times angular bins {alpha, beta}')
+                test_err(err_pp[alpha, beta], ccov_pp[alpha, beta], f'LLLL ccov plus plus angular bins {alpha, beta}')
+                test_err(err_px[alpha, beta], ccov_px[alpha, beta], f'LLLL ccov plus times angular bins {alpha, beta}')
+                test_err(err_xp[alpha, beta], ccov_xp[alpha, beta], f'LLLL ccov times plus angular bins {alpha, beta}')
+                test_err(err_xx[alpha, beta], ccov_xx[alpha, beta], f'LLLL ccov times times angular bins {alpha, beta}')
 
-        return ccov_pp, ccov_px, ccov_xp, ccov_xx
+        err = np.sqrt(err_pp**2 + err_px**2 + err_xp**2 + err_xx**2)
+
+        return ccov_pp, ccov_px, ccov_xp, ccov_xx, err 
 
     #ccov_pp
 
-    ccov_pp, ccov_px, ccov_xp, ccov_xx = generate_matrices('plus', 'plus')
+    ccov_pp, ccov_px, ccov_xp, ccov_xx, errpp = generate_matrices('plus', 'plus')
     
     ccovpp = ccov_pp + ccov_px + ccov_xp + ccov_xx
 
     #ccov_pm
 
-    ccov_pp, ccov_px, ccov_xp, ccov_xx = generate_matrices('plus', 'minus')
+    ccov_pp, ccov_px, ccov_xp, ccov_xx, errpm = generate_matrices('plus', 'minus')
     
     ccovpm = ccov_pp - ccov_px + ccov_xp - ccov_xx
 
     #ccov_mp
 
-    ccov_pp, ccov_px, ccov_xp, ccov_xx = generate_matrices('minus', 'plus')
+    ccov_pp, ccov_px, ccov_xp, ccov_xx, errmp = generate_matrices('minus', 'plus')
 
     ccovmp = ccov_pp + ccov_px - ccov_xp - ccov_xx
 
     #ccov_mm
 
-    ccov_pp, ccov_px, ccov_xp, ccov_xx = generate_matrices('minus', 'minus')
+    ccov_pp, ccov_px, ccov_xp, ccov_xx, errmm = generate_matrices('minus', 'minus')
     
     ccovmm = ccov_pp - ccov_px - ccov_xp + ccov_xx
     
     ccov = np.block([[ccovmm, ccovmp],
                      [ccovpm, ccovpp]])
+
+    err = np.block([[errmm, errmp],
+                     [errpm, errpp]])
     
-    return ccov
+    return ccov, err
 
 ################################################## 6.2.2 LeLe noise/sparsity covariance #############################################################
 
-def generate_ncov_LLLL():
+def generate_ncov_LLLL(sigma_L, Nlens):
     """
     Computes the contribution of noise and sparsity variance in the 
     covariance matrix of the LOS shear correlation functions.
@@ -210,11 +220,21 @@ def generate_ncov_LLLL():
         ncov_xp = np.zeros((Nbin1, Nbin2))
         ncov_xx = np.zeros((Nbin1, Nbin2))
         
+        nerr_pp = np.zeros((Nbin1, Nbin2))
+        nerr_px = np.zeros((Nbin1, Nbin2))
+        nerr_xp = np.zeros((Nbin1, Nbin2))
+        nerr_xx = np.zeros((Nbin1, Nbin2))
+        
         # Initialise the blocks
         scov_pp = np.zeros((Nbin1, Nbin2))
         scov_px = np.zeros((Nbin1, Nbin2))
         scov_xp = np.zeros((Nbin1, Nbin2))
         scov_xx = np.zeros((Nbin1, Nbin2))
+        
+        serr_pp = np.zeros((Nbin1, Nbin2))
+        serr_px = np.zeros((Nbin1, Nbin2))
+        serr_xp = np.zeros((Nbin1, Nbin2))
+        serr_xx = np.zeros((Nbin1, Nbin2))
         
         # Define the integrands
         
@@ -303,28 +323,28 @@ def generate_ncov_LLLL():
                 int_xx, err_xx = integral_bins(integrand_xx, alpha, beta)
                          
                 ncov_pp[alpha, beta] = (sigma_L**2/Nlens) * int_pp
-                nerr_pp = (sigma_L**2/Nlens) * err_pp
+                nerr_pp[alpha, beta] = (sigma_L**2/Nlens) * err_pp
                          
                 scov_pp[alpha, beta] = (L0/Nlens) * int_pp
-                serr_pp = (L0/Nlens) * err_pp
+                serr_pp[alpha, beta] = (L0/Nlens) * err_pp
                          
                 ncov_px[alpha, beta] = (sigma_L**2/Nlens) * int_px
-                nerr_px = (sigma_L**2/Nlens) * err_px
+                nerr_px[alpha, beta] = (sigma_L**2/Nlens) * err_px
                          
                 scov_px[alpha, beta] = (L0/Nlens) * int_px
-                serr_px = (L0/Nlens) * err_px
+                serr_px[alpha, beta] = (L0/Nlens) * err_px
                          
                 ncov_xp[alpha, beta] = (sigma_L**2/Nlens) * int_xp
-                nerr_xp = (sigma_L**2/Nlens) * err_xp
+                nerr_xp[alpha, beta] = (sigma_L**2/Nlens) * err_xp
                          
                 scov_xp[alpha, beta] = (L0/Nlens) * int_xp
-                serr_xp = (L0/Nlens) * err_xp
+                serr_xp[alpha, beta] = (L0/Nlens) * err_xp
                          
                 ncov_xx[alpha, beta] = (sigma_L**2/Nlens) * int_xx
-                nerr_xx = (sigma_L**2/Nlens) * err_xx
+                nerr_xx[alpha, beta] = (sigma_L**2/Nlens) * err_xx
                          
                 scov_xx[alpha, beta] = (L0/Nlens) * int_xx
-                serr_xx = (L0/Nlens) * err_xx
+                serr_xx[alpha, beta] = (L0/Nlens) * err_xx
 
                 Omega_anb = annuli_intersection_area(rs1[alpha], rs1[alpha+1], rs2[beta], rs2[beta+1])
                 
@@ -340,42 +360,45 @@ def generate_ncov_LLLL():
                     scov_pp[alpha, beta] += cterm_s
                     scov_xx[alpha, beta] += cterm_s
     
-                test_err(nerr_pp, ncov_pp[alpha, beta], f'LLLL ncov plus plus angular bins {alpha, beta}')
-                test_err(nerr_px, ncov_px[alpha, beta], f'LLLL ncov plus times angular bins {alpha, beta}')
-                test_err(nerr_xp, ncov_xp[alpha, beta], f'LLLL ncov times plus angular bins {alpha, beta}')
-                test_err(nerr_xx, ncov_xx[alpha, beta], f'LLLL ncov times times angular bins {alpha, beta}')
+                test_err(nerr_pp[alpha, beta], ncov_pp[alpha, beta], f'LLLL ncov plus plus angular bins {alpha, beta}')
+                test_err(nerr_px[alpha, beta], ncov_px[alpha, beta], f'LLLL ncov plus times angular bins {alpha, beta}')
+                test_err(nerr_xp[alpha, beta], ncov_xp[alpha, beta], f'LLLL ncov times plus angular bins {alpha, beta}')
+                test_err(nerr_xx[alpha, beta], ncov_xx[alpha, beta], f'LLLL ncov times times angular bins {alpha, beta}')
     
-                test_err(serr_pp, scov_pp[alpha, beta], f'LLLL scov plus plus angular bins {alpha, beta}')
-                test_err(serr_px, scov_px[alpha, beta], f'LLLL scov plus times angular bins {alpha, beta}')
-                test_err(serr_xp, scov_xp[alpha, beta], f'LLLL scov times plus angular bins {alpha, beta}')
-                test_err(serr_xx, scov_xx[alpha, beta], f'LLLL scov times times angular bins {alpha, beta}')
+                test_err(serr_pp[alpha, beta], scov_pp[alpha, beta], f'LLLL scov plus plus angular bins {alpha, beta}')
+                test_err(serr_px[alpha, beta], scov_px[alpha, beta], f'LLLL scov plus times angular bins {alpha, beta}')
+                test_err(serr_xp[alpha, beta], scov_xp[alpha, beta], f'LLLL scov times plus angular bins {alpha, beta}')
+                test_err(serr_xx[alpha, beta], scov_xx[alpha, beta], f'LLLL scov times times angular bins {alpha, beta}')
 
-        return ncov_pp, ncov_px, ncov_xp, ncov_xx, scov_pp, scov_px, scov_xp, scov_xx    
+        nerr = np.sqrt(nerr_pp**2 + nerr_px**2 + nerr_xp**2 + nerr_xx**2)
+        serr = np.sqrt(serr_pp**2 + serr_px**2 + serr_xp**2 + serr_xx**2)
+
+        return ncov_pp, ncov_px, ncov_xp, ncov_xx, scov_pp, scov_px, scov_xp, scov_xx, nerr, serr    
     
     #plus plus
 
-    ncov_pp, ncov_px, ncov_xp, ncov_xx, scov_pp, scov_px, scov_xp, scov_xx = generate_matrices('plus', 'plus')
+    ncov_pp, ncov_px, ncov_xp, ncov_xx, scov_pp, scov_px, scov_xp, scov_xx, nerrpp, serrpp = generate_matrices('plus', 'plus')
     
     ncovpp = ncov_pp + ncov_px + ncov_xp + ncov_xx    
     scovpp = scov_pp + scov_px + scov_xp + scov_xx
 
     #plus minus
 
-    ncov_pp, ncov_px, ncov_xp, ncov_xx, scov_pp, scov_px, scov_xp, scov_xx = generate_matrices('plus', 'minus')
+    ncov_pp, ncov_px, ncov_xp, ncov_xx, scov_pp, scov_px, scov_xp, scov_xx, nerrpm, serrpm = generate_matrices('plus', 'minus')
     
     ncovpm = ncov_pp - ncov_px + ncov_xp - ncov_xx
     scovpm = scov_pp - scov_px + scov_xp - scov_xx
 
     #minus plus
 
-    ncov_pp, ncov_px, ncov_xp, ncov_xx, scov_pp, scov_px, scov_xp, scov_xx = generate_matrices('minus', 'plus')
+    ncov_pp, ncov_px, ncov_xp, ncov_xx, scov_pp, scov_px, scov_xp, scov_xx, nerrmp, serrmp = generate_matrices('minus', 'plus')
     
     ncovmp = ncov_pp + ncov_px - ncov_xp - ncov_xx
     scovmp = scov_pp + scov_px - scov_xp - scov_xx
 
     #minus minus
 
-    ncov_pp, ncov_px, ncov_xp, ncov_xx, scov_pp, scov_px, scov_xp, scov_xx = generate_matrices('minus', 'minus')
+    ncov_pp, ncov_px, ncov_xp, ncov_xx, scov_pp, scov_px, scov_xp, scov_xx, nerrmm, serrmm = generate_matrices('minus', 'minus')
     
     ncovmm = ncov_pp - ncov_px - ncov_xp + ncov_xx
     scovmm = scov_pp - scov_px - scov_xp + scov_xx
@@ -383,7 +406,13 @@ def generate_ncov_LLLL():
     ncov = np.block([[ncovmm, ncovmp],
                      [ncovpm, ncovpp]])
     
+    nerr = np.block([[nerrmm, nerrmp],
+                     [nerrpm, nerrpp]])
+    
     scov = np.block([[scovmm, scovmp],
                      [scovpm, scovpp]])
     
-    return [ncov, scov]
+    serr = np.block([[serrmm, serrmp],
+                     [serrpm, serrpp]])
+    
+    return [ncov, scov], [nerr, serr]

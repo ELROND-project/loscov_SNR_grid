@@ -10,15 +10,7 @@ def optimise_bins(correlation_function, correlation_type, antiderivative, b, SNR
 
     Thetamax_distribution = arcmintorad(Thetamax_distribution)
     
-    get_item('L0', 'E0') #we'll need these for the prefactors in the signal to noise ratios
-    
-    redshift_distributions = load_file(f"data/{suffix}/redshift_distributions")
-
-    if correlation_type == 'LE':
-        G_B = redshift_distributions['E'].get_ngal(b)
-
-    elif correlation_type == 'LP':
-        G_B = redshift_distributions['P'].get_ngal(b)
+    redshift_distributions = load_file(f"data/redshift_distributions")
     
     def snr(theta_1, theta_2):
 
@@ -30,90 +22,14 @@ def optimise_bins(correlation_function, correlation_type, antiderivative, b, SNR
 
         denominator = np.sqrt(denom_sq)
         
-        if correlation_type == 'LL':
-            A = 2 * np.sqrt(np.pi / Omegatot) * Nlens / (sigma_L**2 + L0)
-        
-        elif correlation_type == 'LE': #check the factors of 2
-            A = 2 * np.sqrt(np.pi / Omegatot) * np.sqrt( 2 * Nlens * G_B / ( (sigma_L**2 + L0) * (sigma_E**2 + E0[b]) ) )
-        
-        elif correlation_type == 'LP': #check the factors of 2
-            A = 2 * np.sqrt(np.pi / Omegatot) * np.sqrt( 2 * Nlens * G_B / (sigma_L**2 + L0) )
-        
-        return A * numerator / denominator
+        return numerator / denominator
 
     def SNR(theta):
         return snr(0,theta)
         
     theta_optimal, SNR_max = find_maximum(SNR, 0, Thetamax_distribution)
 
-    if SNR_max < SNR_goal:               #if our goal SNR is unachievable, even with just 1 bin
-        return [0, theta_optimal]         #return a single bin (the best we can do)
-
-    #if the above isn't satisfied, then it means that SNR_goal < SNR_max. This means that 
-    
-    else: #if our goal SNR is in fact achievable, we want to iteratively determine our bins
-        
-        #the SNR we use is either our goal SNR or the SNR limited by the max number of bins we want
-        SNR_use = max(SNR_goal, SNR_max / ( np.sqrt( 0.5 * Nbin_max ) ) )    #NB this is not exact, and purely empirical
-
-        binscheme = [0] #our bins start at zero    
-
-        alpha = 0
-        
-        finished = False
-        
-        while not finished:
-            
-            def SNR_to_optimise(theta):
-                """
-                A function which goes to zero when the integrated snr between the bin limit on the left and some theta value is equal to the SNR we want to use. 
-                To get to this point, we must have already passed the test that SNR_goal < SNR_max. Therefore, both SNR_goal and SNR_max / Nbin_max exist within
-                the range [ binscheme[alpha], theta_optimal ], and therefore so too must their maximum, so this function will always have an x-intercept.
-
-                Note that, for this method to work, the snr should increase monotonically up to the maximum, but it seems that this is indeed the case (check for issues!)
-                """
-                
-                return snr(binscheme[alpha], theta) - SNR_use
-   
-            theta_new = root_scalar(SNR_to_optimise, bracket=[binscheme[alpha], theta_optimal], method='brentq', xtol=1e-8).root #this solves for the value of theta which gets us to our desired snr
-
-            alpha += 1
-            binscheme.append(theta_new)
-
-            #once we've found the new bin limit, we must once again define a function which returns the SNR from that bin limit to some arbitrary theta  
-            def SNR(theta):
-                return snr(binscheme[alpha],theta)
-
-            #we then want to find what the maximum SNR beyond this point is
-            theta_optimal, SNR_max = find_maximum(SNR, theta_new, Thetamax_distribution)
-
-            #if our goal SNR is unachievable with the remaining binning 
-            if SNR_max < SNR_use:     
-
-                #if, however, the SNR is still acceptable,
-                if SNR_max >= SNR_min:
-
-                    #the optimal theta becomes the final bin limit
-                    binscheme.append(theta_optimal)
-
-                #if the SNR in the last bin would be unusable,
-                else:
-
-                    #we need a function which returns the SNR from the previous bin limit (before the most recently added one) to some arbitrary theta
-                    def SNR(theta):
-                        return snr(binscheme[-2],theta)
-
-                    #this maximum might occur at the most recent bin limit, or at a higher value of theta
-                    theta_optimal_new, SNR_max_new = find_maximum(SNR, binscheme[-2], Thetamax_distribution)
-
-                    #either way, the theta we obtain in the above becomes our new final bin limit
-                    binscheme[-1] = theta_optimal_new
-
-                #either way, provided SNR_max < SNR_use, our while loop is done
-                finished = True
-
-        return binscheme        
-
+    return [0, theta_optimal]         #return a single bin
 
 class Angular_Distributions:
     """
@@ -121,7 +37,7 @@ class Angular_Distributions:
     and their binning in angular separation
     """
     
-    def __init__(self, Nobjects, binscheme=None, sky_coverage=sky_coverage, Nbin_a=None, Thetamax=Thetamax_dist):
+    def __init__(self, binscheme=None, sky_coverage=sky_coverage, Nbin_a=None, Thetamax=Thetamax_dist):
         """
         Arguments:
         - Nlens         : number of lenses we can use
@@ -138,8 +54,6 @@ class Angular_Distributions:
         
         # Lens number and density
         self.Omegatot = sky_coverage * (np.pi / 180)**2 # in rad2
-        self.number = Nobjects
-        self.density = Nobjects / self.Omegatot #the density of lenses or galaxies in an angular bin
 
         # Binning
         if isinstance(binscheme, int): 
@@ -198,7 +112,11 @@ class Angular_Distributions:
             return f
         
         for a in range(Nbin):
+            print(f'rs={rs}')
+            print(f'Nbin={Nbin}')
+            print(f'integrand={integrand}')
             integral, err = monte_carlo_integrate(integrand, [(rs[a], rs[a+1])])
+            print(f'integral={integral}')
             integral /= Omegas[a]
             xi_bins.append(integral)
 

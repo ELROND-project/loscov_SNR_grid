@@ -17,7 +17,7 @@ def get_cls_mixed_LE(b, chimax, lmax, nl):
     b : redshift bin in question (0 to 4)
     """
 
-    get_item('W_LOS_mean_intp', 'WW_LOS_rms_intp', 'W_os_mean_intp', 'WW_os_rms_intp')
+    get_item('Q_LOS_mean_intp', 'QQ_LOS_rms_intp', 'Q_os_mean_intp', 'QQ_os_rms_intp')
     
     nz = 100 #number of elements for discrete integral along the los
     
@@ -30,14 +30,17 @@ def get_cls_mixed_LE(b, chimax, lmax, nl):
     dchis = (chis[2:]-chis[:-2])/2
     chis = chis[1:-1]
     zs = zs[1:-1]
+
+    #the CAMB correction
+    CAMB_factor = ( (1.5*Omega_M*(H0/(c*1e-3))**2)**(-1) ) * (1+zs)**(-1)
     
-    # Lensing kernel (here LOS shear)
-    kernel2LOS = W_LOS_mean_intp(chis) / chis
-    kernelLOS = WW_LOS_rms_intp(chis) / chis
+    # Lensing kernel (here LOS shear) with correction for CAMB units 
+    kernel2LOS = Q_LOS_mean_intp(chis)  * CAMB_factor 
+    kernelLOS = QQ_LOS_rms_intp(chis)  * CAMB_factor
     
-    # Lensing kernel (here weak lensing shear)
-    kernel2os = W_os_mean_intp[b](chis) / chis 
-    kernelos = WW_os_rms_intp[b](chis) / chis
+    # Lensing kernel (here weak lensing shear) with correction for CAMB units 
+    kernel2os = Q_os_mean_intp[b](chis)  * CAMB_factor
+    kernelos = QQ_os_rms_intp[b](chis)  * CAMB_factor
     
     # Integration over chi
     lmin = 1

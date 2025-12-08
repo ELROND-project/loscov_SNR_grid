@@ -17,7 +17,7 @@ def get_cls_mixed_LP(b, chimax, lmax, nl):
     b : redshift bin in question (0 to 4)
     """
 
-    get_item('W_LOS_mean_intp', 'W_d_intp')
+    get_item('Q_LOS_mean_intp', 'Q_d_intp')
     
     nz = 100 #number of elements for discrete integral along the los
     
@@ -30,12 +30,15 @@ def get_cls_mixed_LP(b, chimax, lmax, nl):
     dchis = (chis[2:]-chis[:-2])/2
     chis = chis[1:-1]
     zs = zs[1:-1]
+
+    #the CAMB correction
+    CAMB_factor = ( (1.5*Omega_M*(H0/(c*1e-3))**2)**(-1) ) * (1+zs)**(-1)
     
-    # Lensing kernel (here LOS shear)
-    kernel2LOS = W_LOS_mean_intp(chis) / chis
+    # Lensing kernel (here LOS shear) with correction for CAMB units 
+    kernel2LOS = Q_LOS_mean_intp(chis)  * CAMB_factor
     
-    # Lensing kernel (here position)
-    kernel2d = W_d_intp[b](chis) / chis
+    # Lensing kernel (here position) with correction for CAMB units 
+    kernel2d = Q_d_intp[b](chis)  * CAMB_factor 
     
     # kernel2d = np.heaviside(kernel2d,0)*kernel2d
     # kernel2d = np.sqrt(kernel2d)

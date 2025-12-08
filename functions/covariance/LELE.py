@@ -15,6 +15,7 @@ get_item('LLp','LLx', 'LEp', 'LEx', 'EEp', 'EEx', 'angular_distributions', 'reds
 ################################################## LELE cosmic covariance ##############################################################
 
 def generate_ccov_LELE(B, D):
+    print("B=", B)
     """
     Computes the contribution of cosmic variance in the covariance matrix
     of the LOS shear - galaxy shape correlation functions.
@@ -41,6 +42,11 @@ def generate_ccov_LELE(B, D):
         ccov_px = np.zeros((Nbin1, Nbin2))
         ccov_xp = np.zeros((Nbin1, Nbin2))
         ccov_xx = np.zeros((Nbin1, Nbin2))    
+        
+        err_pp = np.zeros((Nbin1, Nbin2))
+        err_px = np.zeros((Nbin1, Nbin2))
+        err_xp = np.zeros((Nbin1, Nbin2))
+        err_xx = np.zeros((Nbin1, Nbin2))    
     
         # Define the integrands
         
@@ -167,39 +173,41 @@ def generate_ccov_LELE(B, D):
         for alpha in range(Nbin1):
             for beta in range(Nbin2): 
                          
-                ccov_pp[alpha, beta], err_pp = integral_bins(integrand_pp, alpha, beta)
-                ccov_px[alpha, beta], err_px = integral_bins(integrand_px, alpha, beta)
-                ccov_xp[alpha, beta], err_xp = integral_bins(integrand_xp, alpha, beta)
-                ccov_xx[alpha, beta], err_xx = integral_bins(integrand_xx, alpha, beta)
+                ccov_pp[alpha, beta], err_pp[alpha, beta] = integral_bins(integrand_pp, alpha, beta)
+                ccov_px[alpha, beta], err_px[alpha, beta] = integral_bins(integrand_px, alpha, beta)
+                ccov_xp[alpha, beta], err_xp[alpha, beta] = integral_bins(integrand_xp, alpha, beta)
+                ccov_xx[alpha, beta], err_xx[alpha, beta] = integral_bins(integrand_xx, alpha, beta)
         
-                test_err(err_pp, ccov_pp[alpha, beta], f'LELE ccov plus plus redshift bins{B, D} angular bins {alpha, beta}')
-                test_err(err_px, ccov_px[alpha, beta], f'LELE ccov plus times redshift bins{B, D} angular bins {alpha, beta}')
-                test_err(err_xp, ccov_xp[alpha, beta], f'LELE ccov times plus redshift bins{B, D} angular bins {alpha, beta}')
-                test_err(err_xx, ccov_xx[alpha, beta], f'LELE ccov times times redshift bins{B, D} angular bins {alpha, beta}')
+                test_err(err_pp[alpha, beta], ccov_pp[alpha, beta], f'LELE ccov plus plus redshift bins{B, D} angular bins {alpha, beta}')
+                test_err(err_px[alpha, beta], ccov_px[alpha, beta], f'LELE ccov plus times redshift bins{B, D} angular bins {alpha, beta}')
+                test_err(err_xp[alpha, beta], ccov_xp[alpha, beta], f'LELE ccov times plus redshift bins{B, D} angular bins {alpha, beta}')
+                test_err(err_xx[alpha, beta], ccov_xx[alpha, beta], f'LELE ccov times times redshift bins{B, D} angular bins {alpha, beta}')
 
-        return ccov_pp, ccov_px, ccov_xp, ccov_xx
+        err = np.sqrt(err_pp**2 + err_px**2 + err_xp**2 + err_xx**2)
+
+        return ccov_pp, ccov_px, ccov_xp, ccov_xx, err
 
     #ccov_pp
 
-    ccov_pp, ccov_px, ccov_xp, ccov_xx = generate_matrices('plus', 'plus')
+    ccov_pp, ccov_px, ccov_xp, ccov_xx, errpp = generate_matrices('plus', 'plus')
     
     ccovpp = ccov_pp + ccov_px + ccov_xp + ccov_xx
 
     #ccov_pm
 
-    ccov_pp, ccov_px, ccov_xp, ccov_xx = generate_matrices('plus', 'minus')
+    ccov_pp, ccov_px, ccov_xp, ccov_xx, errpm = generate_matrices('plus', 'minus')
     
     ccovpm = ccov_pp - ccov_px + ccov_xp - ccov_xx
 
     #ccov_mp
 
-    ccov_pp, ccov_px, ccov_xp, ccov_xx = generate_matrices('minus', 'plus')
+    ccov_pp, ccov_px, ccov_xp, ccov_xx, errmp = generate_matrices('minus', 'plus')
 
     ccovmp = ccov_pp + ccov_px - ccov_xp - ccov_xx
 
     #ccov_mm
 
-    ccov_pp, ccov_px, ccov_xp, ccov_xx = generate_matrices('minus', 'minus')
+    ccov_pp, ccov_px, ccov_xp, ccov_xx, errmm = generate_matrices('minus', 'minus')
     
     ccovmm = ccov_pp - ccov_px - ccov_xp + ccov_xx
 
@@ -207,11 +215,14 @@ def generate_ccov_LELE(B, D):
     ccov = np.block([[ccovmm, ccovmp],
                      [ccovpm, ccovpp]])
     
-    return ccov
+    err = np.block([[errmm, errmp],
+                     [errpm, errpp]])
+    
+    return ccov, err
 
 ################################################## LELE noise/sparsity covariance #############################################################
 
-def generate_ncov_LELE(B, D):
+def generate_ncov_LELE(sigma_L, Nlens, B, D):
     """
     Computes the contribution of noise and sparsity variance in the covariance matrix
     of the LOS shear - galaxy shape correlation functions.
@@ -243,10 +254,20 @@ def generate_ncov_LELE(B, D):
         ncov_xp = np.zeros((Nbin1, Nbin2))
         ncov_xx = np.zeros((Nbin1, Nbin2))
         
+        nerr_pp = np.zeros((Nbin1, Nbin2))
+        nerr_px = np.zeros((Nbin1, Nbin2))
+        nerr_xp = np.zeros((Nbin1, Nbin2))
+        nerr_xx = np.zeros((Nbin1, Nbin2))
+        
         scov_pp = np.zeros((Nbin1, Nbin2))
         scov_px = np.zeros((Nbin1, Nbin2))
         scov_xp = np.zeros((Nbin1, Nbin2))
         scov_xx = np.zeros((Nbin1, Nbin2))
+        
+        serr_pp = np.zeros((Nbin1, Nbin2))
+        serr_px = np.zeros((Nbin1, Nbin2))
+        serr_xp = np.zeros((Nbin1, Nbin2))
+        serr_xx = np.zeros((Nbin1, Nbin2))
         
         # Define the integrands
         
@@ -437,92 +458,92 @@ def generate_ncov_LELE(B, D):
     
                 ncov_pp[alpha, beta] = (sigma_L**2/Nlens) * int_pp[0]
     
-                nerr_pp = (sigma_L**2/Nlens) * err_pp[0]
+                nerr_pp[alpha, beta] = (sigma_L**2/Nlens) * err_pp[0]
     
                 scov_pp[alpha, beta] = (L0/Nlens) * int_pp[0]
     
-                serr_pp = (L0/Nlens) * err_pp[0]
+                serr_pp[alpha, beta] = (L0/Nlens) * err_pp[0]
     
                 ncov_px[alpha, beta] = (sigma_L**2/Nlens) * int_px[0]
     
-                nerr_px = (sigma_L**2/Nlens) * err_px[0]
+                nerr_px[alpha, beta] = (sigma_L**2/Nlens) * err_px[0]
     
                 scov_px[alpha, beta] = (L0/Nlens) * int_px[0]
     
-                serr_px = (L0/Nlens) * err_px[0]
+                serr_px[alpha, beta] = (L0/Nlens) * err_px[0]
     
                 ncov_xp[alpha, beta] = (sigma_L**2/Nlens) * int_xp[0]
     
-                nerr_xp = (sigma_L**2/Nlens) * err_xp[0]
+                nerr_xp[alpha, beta] = (sigma_L**2/Nlens) * err_xp[0]
     
                 scov_xp[alpha, beta] = (L0/Nlens) * int_xp[0]
     
-                serr_xp = (L0/Nlens) * err_xp[0]
+                serr_xp[alpha, beta] = (L0/Nlens) * err_xp[0]
     
                 ncov_xx[alpha, beta] = (sigma_L**2/Nlens) * int_xx[0]
     
-                nerr_xx = (sigma_L**2/Nlens) * err_xx[0]
+                nerr_xx[alpha, beta] = (sigma_L**2/Nlens) * err_xx[0]
     
                 scov_xx[alpha, beta] = (L0/Nlens) * int_xx[0]
     
-                serr_xx = (L0/Nlens) * err_xx[0]
+                serr_xx[alpha, beta] = (L0/Nlens) * err_xx[0]
             
                 #addition of constant term and term with sigma_E
                 if B == D:
         
                     ncov_pp[alpha, beta] += (sigma_E**2/G_B) * int_pp[1] 
         
-                    nerr_pp = (
-                             np.sqrt( nerr_pp**2
+                    nerr_pp[alpha, beta] = (
+                             np.sqrt( nerr_pp[alpha, beta]**2
                                 + ( (sigma_E**2/G_B) * err_pp[1])**2 )
                               ) 
         
                     scov_pp[alpha, beta] += (E0[B]/G_B) * int_pp[1] 
         
-                    serr_pp = (
-                              np.sqrt(  serr_pp**2
+                    serr_pp[alpha, beta] = (
+                              np.sqrt(  serr_pp[alpha, beta]**2
                                       + ( (E0[B]/G_B) * err_pp[1])**2 )
                               )
         
                     ncov_px[alpha, beta] += (sigma_E**2/G_B) * int_px[1] 
         
-                    nerr_px = (
-                              np.sqrt(  nerr_px**2
+                    nerr_px[alpha, beta] = (
+                              np.sqrt(  nerr_px[alpha, beta]**2
                                       + ( (sigma_E**2/G_B) * err_px[1])**2 )
                               )
         
                     scov_px[alpha, beta] += (E0[B]/G_B) * int_px[1] 
         
-                    serr_px = (
-                              np.sqrt(  serr_px**2
+                    serr_px[alpha, beta] = (
+                              np.sqrt(  serr_px[alpha, beta]**2
                                       + ( (E0[B]/G_B) * err_px[1])**2 )
                               )
         
                     ncov_xp[alpha, beta] += (sigma_E**2/G_B) * int_xp[1] 
         
-                    nerr_xp = (
-                              np.sqrt(  nerr_xp**2
+                    nerr_xp[alpha, beta] = (
+                              np.sqrt(  nerr_xp[alpha, beta]**2
                                       + ( (sigma_E**2/G_B) * err_xp[1])**2 )
                               )
         
                     scov_xp[alpha, beta] += (E0[B]/G_B) * int_xp[1] 
         
-                    serr_xp = (
-                              np.sqrt(  serr_xp**2
+                    serr_xp [alpha, beta]= (
+                              np.sqrt(  serr_xp[alpha, beta]**2
                                       + ( (E0[B]/G_B) * err_xp[1])**2 )
                               )
         
                     ncov_xx[alpha, beta] += (sigma_E**2/G_B) * int_xx[1] 
         
-                    nerr_xx = (
-                              np.sqrt(  nerr_xx**2
+                    nerr_xx[alpha, beta] = (
+                              np.sqrt(  nerr_xx[alpha, beta]**2
                                       + ( (sigma_E**2/G_B) * err_xx[1])**2 )
                               )
         
                     scov_xx[alpha, beta] += (E0[B]/G_B) * int_xx[1] 
         
-                    serr_xx = (
-                              np.sqrt(  serr_xx**2
+                    serr_xx[alpha, beta] = (
+                              np.sqrt(  serr_xx[alpha, beta]**2
                                       + ( (E0[B]/G_B) * err_xx[1])**2 )
                               )
                 
@@ -546,42 +567,45 @@ def generate_ncov_LELE(B, D):
                         scov_pp[alpha, beta] += cterm_s
                         scov_xx[alpha, beta] += cterm_s
     
-            test_err(nerr_pp, ncov_pp[alpha, beta], f'LELE ncov plus plus redshift bins {B,D} angular bins {alpha, beta}')
-            test_err(nerr_px, ncov_px[alpha, beta], f'LELE ncov plus times redshift bins {B,D} angular bins {alpha, beta}')
-            test_err(nerr_xp, ncov_xp[alpha, beta], f'LELE ncov times plus redshift bins {B,D} angular bins {alpha, beta}')
-            test_err(nerr_xx, ncov_xx[alpha, beta], f'LELE ncov times times redshift bins {B,D} angular bins {alpha, beta}')
+            test_err(nerr_pp[alpha, beta], ncov_pp[alpha, beta], f'LELE ncov plus plus redshift bins {B,D} angular bins {alpha, beta}')
+            test_err(nerr_px[alpha, beta], ncov_px[alpha, beta], f'LELE ncov plus times redshift bins {B,D} angular bins {alpha, beta}')
+            test_err(nerr_xp[alpha, beta], ncov_xp[alpha, beta], f'LELE ncov times plus redshift bins {B,D} angular bins {alpha, beta}')
+            test_err(nerr_xx[alpha, beta], ncov_xx[alpha, beta], f'LELE ncov times times redshift bins {B,D} angular bins {alpha, beta}')
             
-            test_err(serr_pp, scov_pp[alpha, beta], f'LELE scov plus plus redshift bins {B,D} angular bins {alpha, beta}')
-            test_err(serr_px, scov_px[alpha, beta], f'LELE scov plus times redshift bins {B,D} angular bins {alpha, beta}')
-            test_err(serr_xp, scov_xp[alpha, beta], f'LELE scov times plus redshift bins {B,D} angular bins {alpha, beta}')
-            test_err(serr_xx, scov_xx[alpha, beta], f'LELE scov times times redshift bins {B,D} angular bins {alpha, beta}')
+            test_err(serr_pp[alpha, beta], scov_pp[alpha, beta], f'LELE scov plus plus redshift bins {B,D} angular bins {alpha, beta}')
+            test_err(serr_px[alpha, beta], scov_px[alpha, beta], f'LELE scov plus times redshift bins {B,D} angular bins {alpha, beta}')
+            test_err(serr_xp[alpha, beta], scov_xp[alpha, beta], f'LELE scov times plus redshift bins {B,D} angular bins {alpha, beta}')
+            test_err(serr_xx[alpha, beta], scov_xx[alpha, beta], f'LELE scov times times redshift bins {B,D} angular bins {alpha, beta}')
 
-        return ncov_pp, ncov_px, ncov_xp, ncov_xx, scov_pp, scov_px, scov_xp, scov_xx    
+        nerr = np.sqrt(nerr_pp**2 + nerr_px**2 + nerr_xp**2 + nerr_xx**2)
+        serr = np.sqrt(serr_pp**2 + serr_px**2 + serr_xp**2 + serr_xx**2)
+
+        return ncov_pp, ncov_px, ncov_xp, ncov_xx, scov_pp, scov_px, scov_xp, scov_xx, nerr, serr    
     
     #plus plus
 
-    ncov_pp, ncov_px, ncov_xp, ncov_xx, scov_pp, scov_px, scov_xp, scov_xx = generate_matrices('plus', 'plus')
+    ncov_pp, ncov_px, ncov_xp, ncov_xx, scov_pp, scov_px, scov_xp, scov_xx, nerrpp, serrpp = generate_matrices('plus', 'plus')
     
     ncovpp = ncov_pp + ncov_px + ncov_xp + ncov_xx    
     scovpp = scov_pp + scov_px + scov_xp + scov_xx
 
     #plus minus
 
-    ncov_pp, ncov_px, ncov_xp, ncov_xx, scov_pp, scov_px, scov_xp, scov_xx = generate_matrices('plus', 'minus')
+    ncov_pp, ncov_px, ncov_xp, ncov_xx, scov_pp, scov_px, scov_xp, scov_xx, nerrpm, serrpm = generate_matrices('plus', 'minus')
     
     ncovpm = ncov_pp - ncov_px + ncov_xp - ncov_xx
     scovpm = scov_pp - scov_px + scov_xp - scov_xx
 
     #minus plus
 
-    ncov_pp, ncov_px, ncov_xp, ncov_xx, scov_pp, scov_px, scov_xp, scov_xx = generate_matrices('minus', 'plus')
+    ncov_pp, ncov_px, ncov_xp, ncov_xx, scov_pp, scov_px, scov_xp, scov_xx, nerrmp, serrmp = generate_matrices('minus', 'plus')
     
     ncovmp = ncov_pp + ncov_px - ncov_xp - ncov_xx
     scovmp = scov_pp + scov_px - scov_xp - scov_xx
 
     #minus minus
 
-    ncov_pp, ncov_px, ncov_xp, ncov_xx, scov_pp, scov_px, scov_xp, scov_xx = generate_matrices('minus', 'minus')
+    ncov_pp, ncov_px, ncov_xp, ncov_xx, scov_pp, scov_px, scov_xp, scov_xx, nerrmm, serrmm = generate_matrices('minus', 'minus')
     
     ncovmm = ncov_pp - ncov_px - ncov_xp + ncov_xx
     scovmm = scov_pp - scov_px - scov_xp + scov_xx
@@ -590,8 +614,14 @@ def generate_ncov_LELE(B, D):
     ncov = np.block([[ncovmm, ncovmp],
                      [ncovpm, ncovpp]])
     
+    nerr = np.block([[nerrmm, nerrmp],
+                     [nerrpm, nerrpp]])
+    
     scov = np.block([[scovmm, scovmp],
                      [scovpm, scovpp]])
     
-    return [ncov, scov]
+    serr = np.block([[serrmm, serrmp],
+                     [serrpm, serrpp]])
+    
+    return [ncov, scov], [nerr, serr]
 
