@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=init_job
-#SBATCH --output=logs/init_%j.log
-#SBATCH --error=logs/init_%j.err
+#SBATCH --output=logs/init.log
+#SBATCH --error=logs/init.err
 #SBATCH --ntasks=1
 #SBATCH --mem=5000
 #SBATCH --partition=lupm
@@ -12,6 +12,7 @@ ORIGINAL_DIR=$(pwd)  #the current working directory
 
 echo "Running initialization scripts"
 source ~/lenstronomyenv/bin/activate
+python -u generate_params.py
 python -u first_steps.py
 python -u ccov.py
 echo "Initialization finished"

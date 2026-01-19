@@ -1,5 +1,5 @@
-1. Use params.txt to define the grid of values we consider
+1. define the grid of values to consider, and any other variables to be adjusted, in config.py
 
-2. run setup.sh to calculate everything which isn't affected by the choice of sigma_L or Nlens
+2. run setup.sh
 
-3. when setup.sh is complete, run job.sh to parallelise all the computation of the noise and sparsity covariance
+3. run job.sh

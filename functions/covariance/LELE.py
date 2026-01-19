@@ -546,20 +546,18 @@ def generate_ncov_LELE(sigma_L, Nlens, B, D):
                               np.sqrt(  serr_xx[alpha, beta]**2
                                       + ( (E0[B]/G_B) * err_xx[1])**2 )
                               )
-                
-                    Omega_anb = annuli_intersection_area(rs1[alpha], rs1[alpha+1], rs2[beta], rs2[beta+1])
     
-                    if Omega_anb != 0:
+                    if alpha == 0:
                         
                         cterm_n = ( (1/4) * (1/Nlens) * (1/G_B) 
                                   * ( sigma_L**2 * sigma_E**2
                                     + sigma_L**2 * E0[B]
                                     + L0 * sigma_E**2 )
-                                   * Omega_anb * Omegatot / ( Omegas1[alpha] * Omegas2[beta] ) )
+                                   * Omegatot / Omegas1[alpha] )
                         
                         cterm_s = ( (1/4) * (1/Nlens) * (1/G_B) 
                                   * L0 * E0[B]
-                                   * Omega_anb * Omegatot / ( Omegas1[alpha] * Omegas2[beta] ))
+                                   * Omegatot / Omegas1[alpha] )
                     
                         ncov_pp[alpha, beta] += cterm_n
                         ncov_xx[alpha, beta] += cterm_n

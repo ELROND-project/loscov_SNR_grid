@@ -8,13 +8,14 @@
 #SBATCH --exclude=tumce[2-4]
 #SBATCH --time=10-00:00:00
 
+
 ORIGINAL_DIR=$(pwd)
 
 # Number of parameter combinations to run per array task
 PARAMS_PER_TASK=20  # Adjust this number based on your needs
 
 # Count total parameter combinations
-NPARAMS=$(wc -l < "${ORIGINAL_DIR}/params.txt")
+NPARAMS=$(awk 'NF' "${ORIGINAL_DIR}/params.txt" | wc -l) #count only non-empty lines
 
 # Calculate number of array tasks needed
 NTASKS=$(( (NPARAMS + PARAMS_PER_TASK - 1) / PARAMS_PER_TASK ))
@@ -47,7 +48,7 @@ source ~/lenstronomyenv/bin/activate
 
 # Loop through assigned parameter combinations
 for LINE_NUM in $(seq $START_LINE $END_LINE); do
-    PARAMS=$(sed -n "${LINE_NUM}p" "${ORIGINAL_DIR}/params.txt")
+    PARAMS=$(awk 'NF' "${ORIGINAL_DIR}/params.txt" | sed -n "${LINE_NUM}p")
     SIGMA_L=$(echo "$PARAMS" | awk '{print $1}')
     NLENS=$(echo "$PARAMS" | awk '{print $2}')
     

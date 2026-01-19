@@ -1,0 +1,9 @@
+# Ignore these files and folders
+logs/
+*.log
+*.pdf
+*.pyc
+*.png
+__pycache__/
+.ipynb_checkpoints/
+data/Old/

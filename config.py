@@ -1,6 +1,15 @@
 import numpy as np
 import sys, platform, os
 
+#the range over which to compute things
+sigL_lower = -3
+sigL_upper = 1
+sigL_n = 90
+
+Nlens_lower = 1
+Nlens_upper = 8
+Nlens_n = 90
+
 compute_correlations = False     #computes the correlation functions necessary for calculating the covariance matrices,
                                  #and saves them in a pickle file. Set to False if this has already been done, which
                                  #saves computation time
