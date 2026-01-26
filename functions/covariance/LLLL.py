@@ -44,20 +44,17 @@ def generate_ccov_LLLL():
         err_xp = np.zeros((Nbin1, Nbin2))
         err_xx = np.zeros((Nbin1, Nbin2))
         
-        # Define the integrands (complete from here)
+        # Define the integrands
         
         def integrand_pp(params):
             
             psi_j, psi_kl, r_j, r_kl, r_k = params
         
-            y_kj = r_j*np.sin(psi_j)
-            x_kj = r_j*np.cos(psi_j) - r_k
+            x_jl = r_kl * np.cos(psi_kl) - r_j * np.cos(psi_j) + r_k
+            y_jl = r_kl * np.sin(psi_kl) - r_j * np.sin(psi_j)
             
-            r_kj = np.sqrt( y_kj**2 + x_kj**2 ) 
-            psi_kj = np.arctan2(y_kj, x_kj)
-            
-            r_jl = cos_law_side(r_kl, r_kj, (psi_kl-psi_kj))
-            psi_jl = cos_law_angle(r_kl, r_jl, r_kj) + psi_kl
+            r_jl = np.sqrt( x_jl**2 + y_jl**2 ) 
+            psi_jl = np.arctan2(y_jl, x_jl)
     
             f = ( ( LLp(r_k) * cos2(psi_j) * cos2(psi_kl)
                   + LLx(r_k) * sin2(psi_j) * sin2(psi_kl) )
@@ -72,14 +69,11 @@ def generate_ccov_LLLL():
             
             psi_j, psi_kl, r_j, r_kl, r_k = params
         
-            y_kj = r_j*np.sin(psi_j)
-            x_kj = r_j*np.cos(psi_j) - r_k
+            x_jl = r_kl * np.cos(psi_kl) - r_j * np.cos(psi_j) + r_k
+            y_jl = r_kl * np.sin(psi_kl) - r_j * np.sin(psi_j)
             
-            r_kj = np.sqrt( y_kj**2 + x_kj**2 ) 
-            psi_kj = np.arctan2(y_kj, x_kj)
-            
-            r_jl = cos_law_side(r_kl, r_kj, (psi_kl-psi_kj))
-            psi_jl = cos_law_angle(r_kl, r_jl, r_kj) + psi_kl
+            r_jl = np.sqrt( x_jl**2 + y_jl**2 ) 
+            psi_jl = np.arctan2(y_jl, x_jl)
     
             f = - ( ( LLp(r_k) * cos2(psi_j) * sin2(psi_kl)
                   - LLx(r_k) * sin2(psi_j) * cos2(psi_kl) ) * ( LLp(r_jl) * cos2(psi_jl - psi_j) * sin2(psi_jl - psi_kl)
@@ -93,14 +87,11 @@ def generate_ccov_LLLL():
             
             psi_j, psi_kl, r_j, r_kl, r_k = params
         
-            y_kj = r_j*np.sin(psi_j)
-            x_kj = r_j*np.cos(psi_j) - r_k
+            x_jl = r_kl * np.cos(psi_kl) - r_j * np.cos(psi_j) + r_k
+            y_jl = r_kl * np.sin(psi_kl) - r_j * np.sin(psi_j)
             
-            r_kj = np.sqrt( y_kj**2 + x_kj**2 ) 
-            psi_kj = np.arctan2(y_kj, x_kj)
-            
-            r_jl = cos_law_side(r_kl, r_kj, (psi_kl-psi_kj))
-            psi_jl = cos_law_angle(r_kl, r_jl, r_kj) + psi_kl
+            r_jl = np.sqrt( x_jl**2 + y_jl**2 ) 
+            psi_jl = np.arctan2(y_jl, x_jl)
     
             f = - ( ( LLp(r_k) * sin2(psi_j) * cos2(psi_kl)
                   - LLx(r_k) * cos2(psi_j) * sin2(psi_kl) ) * ( LLp(r_jl) * sin2(psi_jl - psi_j) * cos2(psi_jl - psi_kl)
@@ -114,14 +105,11 @@ def generate_ccov_LLLL():
             
             psi_j, psi_kl, r_j, r_kl, r_k = params
         
-            y_kj = r_j*np.sin(psi_j)
-            x_kj = r_j*np.cos(psi_j) - r_k
+            x_jl = r_kl * np.cos(psi_kl) - r_j * np.cos(psi_j) + r_k
+            y_jl = r_kl * np.sin(psi_kl) - r_j * np.sin(psi_j)
             
-            r_kj = np.sqrt( y_kj**2 + x_kj**2 ) 
-            psi_kj = np.arctan2(y_kj, x_kj)
-            
-            r_jl = cos_law_side(r_kl, r_kj, (psi_kl-psi_kj))
-            psi_jl = cos_law_angle(r_kl, r_jl, r_kj) + psi_kl
+            r_jl = np.sqrt( x_jl**2 + y_jl**2 ) 
+            psi_jl = np.arctan2(y_jl, x_jl)
     
             f = ( ( LLp(r_k) * sin2(psi_j) * sin2(psi_kl)
                   + LLx(r_k) * cos2(psi_j) * cos2(psi_kl) ) * ( LLp(r_jl) * sin2(psi_jl - psi_j) * sin2(psi_jl - psi_kl)
