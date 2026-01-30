@@ -38,7 +38,7 @@ def generate_ccov_LPLP(B, D):
     ccov = np.zeros((Nbin1, Nbin2))
     err = np.zeros((Nbin1, Nbin2))
     
-    # Define the integrands (complete from here)
+    # Define the integrands
     
     def integrand(params):
         
@@ -133,7 +133,7 @@ def generate_ncov_LPLP(sigma_L, Nlens, B, D):
         psi_ik = np.arctan2(y_ik, x_ik)
         
         f = ( LLp(r_ik) * cos2(psi_ik) * cos2(psi_ik - psi_k) 
-                             + LLx(r_ik) * sin2(psi_ik) * sin2(psi_ik - psi_k) )
+            + LLx(r_ik) * sin2(psi_ik) * sin2(psi_ik - psi_k) )
 
         f *= 2 * np.pi * r_i * r_k
                               

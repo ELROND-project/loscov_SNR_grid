@@ -15,7 +15,6 @@ get_item('LLp','LLx', 'LEp', 'LEx', 'EEp', 'EEx', 'angular_distributions', 'reds
 ################################################## LELE cosmic covariance ##############################################################
 
 def generate_ccov_LELE(B, D):
-    print("B=", B)
     """
     Computes the contribution of cosmic variance in the covariance matrix
     of the LOS shear - galaxy shape correlation functions.
@@ -535,17 +534,17 @@ def generate_ncov_LELE(sigma_L, Nlens, B, D):
                                       + ( (E0[B]/G_B) * err_xx[1])**2 )
                               )
     
-                    if alpha == 0:
+                    if alpha == beta:
                         
                         cterm_n = ( (1/4) * (1/Nlens) * (1/G_B) 
                                   * ( sigma_L**2 * sigma_E**2
                                     + sigma_L**2 * E0[B]
-                                    + L0 * sigma_E**2 )
+                                    + L0 * sigma_E**2 ) 
                                    * Omegatot / Omegas1[alpha] )
                         
                         cterm_s = ( (1/4) * (1/Nlens) * (1/G_B) 
-                                  * L0 * E0[B]
-                                   * Omegatot / Omegas1[alpha] )
+                                  * L0 * E0[B] 
+                                   * Omegatot / Omegas1[alpha])
                     
                         ncov_pp[alpha, beta] += cterm_n
                         ncov_xx[alpha, beta] += cterm_n

@@ -14,7 +14,7 @@ def optimise_bins(correlation_function, correlation_type, antiderivative, b, SNR
     
     def snr(theta_1, theta_2):
 
-        numerator = antiderivative(theta_2) - antiderivative(theta_1)
+        numerator = np.abs(antiderivative(theta_2) - antiderivative(theta_1))
         denom_sq = theta_2**2 - theta_1**2
         
         if denom_sq <= 0:
@@ -54,6 +54,8 @@ class Angular_Distributions:
         
         # Lens number and density
         self.Omegatot = sky_coverage * (np.pi / 180)**2 # in rad2
+        self.number = Nobjects
+        self.density = Nobjects / self.Omegatot #the density of lenses or galaxies in an angular bin
 
         # Binning
         if isinstance(binscheme, int): 

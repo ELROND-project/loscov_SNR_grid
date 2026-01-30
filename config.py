@@ -10,7 +10,7 @@ Nlens_lower = 1
 Nlens_upper = 8
 Nlens_n = 90
 
-compute_correlations = False     #computes the correlation functions necessary for calculating the covariance matrices,
+compute_correlations = True     #computes the correlation functions necessary for calculating the covariance matrices,
                                  #and saves them in a pickle file. Set to False if this has already been done, which
                                  #saves computation time
                                  #Note, this is automatically set to True if the correlations were calculated for different
@@ -95,7 +95,7 @@ else:
 
     SNR_goal = 8
     Nbin_max = 20          #this should dictate the maximum number of angular bins, but it won't be exact, and relies on an empirical relationship
-    SNR_min = 3.5
+    SNR_min = 2.5
     theta_resolution = 1000  #the number of thetas in the linspace with which we obtain the max theta and calculate the "total SNR"
 
     SNR_goal_LL_plus = 6

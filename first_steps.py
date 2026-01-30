@@ -26,6 +26,9 @@ print(f"Finished 2. Redshift Distributions.")
 ################################################# 3. CORRELATIONS ############################################################
 ##############################################################################################################################
 
+if not os.path.exists(f"correlations_NE={Nbinz_E}_NP={Nbinz_P}{correlation_notes}"):
+    compute_correlations = True
+
 if compute_correlations:
 
     Thetamin = arcmintorad(Thetamin_arcmin)  #minimum theta from which we calculate correlation functions (in radians)
@@ -35,14 +38,14 @@ if compute_correlations:
     
     #reading in the forecasted sample of Euclid lenses
     Euclid_lenses = np.loadtxt('lenses_Euclid.txt')
-    zd = Euclid_lenses[:, 0]
-    zs = Euclid_lenses[:, 1]
+    zd_Euclid = Euclid_lenses[:, 0]
+    zs_Euclid = Euclid_lenses[:, 1]
     
     # convert into comoving distances (in Mpc)
-    chid = background.comoving_radial_distance(zd)
-    chis = background.comoving_radial_distance(zs)
+    chid_Euclid = background.comoving_radial_distance(zd_Euclid)
+    chis_Euclid = background.comoving_radial_distance(zs_Euclid)
     
-    chimax_L = max(chis)
+    chimax_L = max(chis_Euclid)
 
     chimax_E = background.comoving_radial_distance(zmax_E)
     chimax_P = background.comoving_radial_distance(zmax_P)
@@ -50,7 +53,7 @@ if compute_correlations:
     chimax = max(chimax_L,chimax_E,chimax_P) 
     
     #place these variables in the global dictionary
-    add_dict(chimax, chid, chis, zd, zs)
+    add_dict(chimax, chid_Euclid, chis_Euclid, zd_Euclid, zs_Euclid)
 
     ##############################################################################################################################
     ############################################ 3.2 AUTOCORRELATION FUNCTIONS ###################################################
