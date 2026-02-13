@@ -140,17 +140,18 @@ def radial_integration(correlation_function, Theta_start, Theta_end):
 
     return integral
     
-def compute_antiderivative(function, thetamax_dist = Thetamax_dist):
+def compute_antiderivative(function, theta_max = theta_max_interpolation):
 
-    Thetamin_rad = arcmintorad(Thetamin_arcmin) 
-    thetamax_rad = arcmintorad(thetamax_dist)
-    
-    Thetas = np.logspace(np.log10(Thetamin_rad), np.log10(thetamax_rad), theta_resolution)
+    Thetas = np.logspace(
+    np.log10(theta_min_interpolation),
+    np.log10(theta_max_interpolation),
+    theta_res_interpolation
+)
     Thetas = np.insert(Thetas, 0, 0.0)  # Prepend 0 to the array
     
     antiderivative_list = [0]
     
-    for i in range(theta_resolution):
+    for i in range(theta_res_interpolation):
         
         antiderivative = radial_integration(function, 0, Thetas[i + 1])
         antiderivative_list.append(antiderivative)
@@ -166,9 +167,13 @@ def find_maximum(f, a, b):
     else:
         raise RuntimeError("Failed to find maximum.")
 
+def interpolation(x,y,s=smoothing_value):
+
+    return UnivariateSpline(x, y, s=s)
+
 ###################################### Monte Carlo Integrator #######################################
 
-def monte_carlo_integrate(funcs, bounds, num_samples=nsamp, num_batches = num_batches):
+def monte_carlo_integrate_original(funcs, bounds, num_samples=nsamp, num_batches = num_batches):
     """
     Monte Carlo integration over a given domain with error estimation.
     
@@ -259,6 +264,137 @@ def monte_carlo_integrate(funcs, bounds, num_samples=nsamp, num_batches = num_ba
     if single_function:
         return final_integrals[0], errors[0]
         
+    else:
+        return final_integrals, errors
+
+################################# Quasi-Monte Carlo Integration (Sobol) #######################################
+
+def monte_carlo_integrate(
+    funcs,
+    bounds,
+    num_samples=nsamp,
+    num_batches=num_batches,
+    seed=None,
+):
+    """
+    Quasi-Monte Carlo integration using scrambled Sobol sequences.
+
+    Drop-in replacement for monte_carlo_integrate with identical
+    function interface and return format.
+
+    Parameters
+    ----------
+    funcs : callable or list of callables
+        Each function must accept an array of shape (dim, n_samples)
+        and return an array of shape (n_samples,).
+    bounds : list of tuples
+        Integration bounds [(a1, b1), (a2, b2), ...].
+    num_samples : int
+        Total number of QMC samples.
+    num_batches : int
+        Number of independent Sobol randomizations (error estimation).
+    seed : int or None
+        Random seed for Sobol scrambling.
+
+    Returns
+    -------
+    integral, error
+        Or lists thereof if multiple functions are provided.
+    """
+
+    # --- Handle single vs multiple functions ---
+    if not isinstance(funcs, (list, tuple)):
+        funcs = [funcs]
+        single_function = True
+    else:
+        single_function = False
+
+    nsamp_use = int(num_samples)
+    dim = len(bounds)
+    bounds_arr = np.array(bounds, dtype=float)
+
+    # Number of samples per batch (= per Sobol randomization)
+    batch_size = nsamp_use // num_batches
+    if batch_size <= 0:
+        raise ValueError("num_batches is too large for num_samples")
+
+    volumes = bounds_arr[:, 1] - bounds_arr[:, 0]
+    total_volume = float(np.prod(volumes))
+
+    rng = np.random.default_rng(seed)
+
+    # --- Precompute rescale values (identical logic to old MC) ---
+    n_subsample = min(100, batch_size)
+    subsamples = np.array(
+        [rng.uniform(low=a, high=b, size=n_subsample) for a, b in bounds]
+    )
+
+    rescale_vals = []
+    for func in funcs:
+        f_sub = func(subsamples)
+        typical_scale = np.median(np.abs(f_sub))
+        rescale_vals.append(1.0 if typical_scale == 0 else 1.0 / typical_scale)
+
+    # --- Storage ---
+    batch_sums = [[] for _ in funcs]
+    batch_sumsq = [[] for _ in funcs]
+    batch_ns = []
+
+    # --- QMC sampling ---
+    use_base2 = (batch_size & (batch_size - 1)) == 0
+    base2_m = int(np.log2(batch_size)) if use_base2 else None
+
+    for b in range(num_batches):
+        sampler = qmc.Sobol(
+            d=dim,
+            scramble=True,
+            seed=None if seed is None else seed + b,
+        )
+
+        if use_base2:
+            qmc_points = sampler.random_base2(base2_m)
+        else:
+            qmc_points = sampler.random(n=batch_size)
+
+        # Scale to bounds and transpose to (dim, n)
+        samples = np.empty((dim, batch_size))
+        for d in range(dim):
+            low, high = bounds_arr[d]
+            samples[d] = low + qmc_points[:, d] * (high - low)
+
+        # Evaluate all functions on the same samples
+        for i, func in enumerate(funcs):
+            values = func(samples) * rescale_vals[i]
+            batch_sums[i].append(np.sum(values))
+            batch_sumsq[i].append(np.sum(values**2))
+
+        batch_ns.append(values.size)
+
+    # --- Final estimates ---
+    final_integrals = []
+    errors = []
+
+    for i in range(len(funcs)):
+        N = int(np.sum(batch_ns))
+        total_sum = float(np.sum(batch_sums[i]))
+        total_sumsq = float(np.sum(batch_sumsq[i]))
+
+        mean_f = total_sum / N
+
+        if N > 1:
+            var_f = (total_sumsq - N * mean_f**2) / (N - 1)
+            var_f = max(var_f, 0.0)
+        else:
+            var_f = 0.0
+
+        mean_integral = total_volume * mean_f / rescale_vals[i]
+        std_error = total_volume * np.sqrt(var_f / N) / rescale_vals[i]
+
+        final_integrals.append(mean_integral)
+        errors.append(std_error)
+
+    if single_function:
+        return final_integrals[0], errors[0]
     else:
         return final_integrals, errors
 

@@ -1,14 +1,14 @@
 import numpy as np
 import sys, platform, os
 
-#the range over which to compute things
+#the range over which to compute things (used in part one to create params.txt)
 sigL_lower = -3
 sigL_upper = 1
-sigL_n = 90
+sigL_n = 160
 
 Nlens_lower = 1
 Nlens_upper = 8
-Nlens_n = 90
+Nlens_n = 160
 
 compute_correlations = True     #computes the correlation functions necessary for calculating the covariance matrices,
                                  #and saves them in a pickle file. Set to False if this has already been done, which
@@ -40,15 +40,31 @@ binscheme_P = Nbinz_P
 zmax_E = zmax_dist
 zmax_P = zmax_dist
 
-######################################## Angular distribution ##########################################
+#################################### Angles for correlation functions ##################################
 
-supply_binscheme = False     #set it true if you want to manually set the binning, false and the binning will be optimised according to SNR
-    
-Thetamax_dist = 3e2     #maximum theta to calculate distributions inputted into covariance matrices (arcmin)
+Thetamin_arcmin = 0.1                            #minimum theta from which we calculate correlation functions (in arcmin)
 
-Thetamax_LL = Thetamax_dist             
-Thetamax_LE = Thetamax_dist             
-Thetamax_LP = Thetamax_dist 
+Thetamin = Thetamin_arcmin / (60 * 180 / np.pi)  #minimum theta from which we calculate correlation functions (in radians)
+Thetamax = np.pi                                 #maximum theta to which we calculate correlation functions (in radians)
+nTheta = 10000                                   #number of points used to compute the correlation function
+
+lmax = 1e8
+nl = 1000
+
+######################################## Angles for interpolations ##########################################
+
+theta_max_interpolation_arcmin = 300 #the maximum theta that we interpolate to (arcminutes)
+
+theta_min_interpolation = Thetamin #we're working in log space, so we don't start from 0
+theta_max_interpolation = theta_max_interpolation_arcmin / (60 * 180 / np.pi)
+theta_res_interpolation = 640 #the resolution of thetas in the interpolation (ideally divisible by 16)
+
+smoothing_window = 5 #for the rolling median average
+smoothing_value = 0.0 #set to zero and interpolation goes through every point, higher values for more smoothing
+
+Thetamax_LL = theta_max_interpolation          
+Thetamax_LE = theta_max_interpolation            
+Thetamax_LP = theta_max_interpolation
 
 Thetamax_LL_plus = Thetamax_LL
 Thetamax_LL_minus = Thetamax_LL
@@ -59,64 +75,6 @@ Thetamax_LE_minus = Thetamax_LE
 Omegatot = sky_coverage * (np.pi / 180)**2                                #sky coverage (in rad^2)
 n_b = ( NGal / sky_coverage * (np.pi / 180)**2 ) / Nbin_z                 #number density of galaxies per redshift bin (in rad^-2)
 r2_max = np.sqrt(Omegatot/np.pi)                                          #the maximum theta used in integrals which would normally run from 0 to infty 
-
-if supply_binscheme:
-
-    Nbina = 6              #the default number of angular separation bins
-    Nbina = int(Nbina)                                      #the maximum angle out to which we integrate (in rad)  
-    
-    # angular bin limits (radians)
-    # binscheme_LL_plus = [0.0, 0.03902675, 0.05519216, 0.06759631, 0.0780535,  0.08726646]
-    # binscheme_LL_minus = [0.0, 0.03902675, 0.05519216, 0.06759631, 0.0780535,  0.08726646]
-    # binscheme_LE_plus = [0.0, 0.03902675, 0.05519216, 0.06759631, 0.0780535,  0.08726646]
-    # binscheme_LE_minus = [0.0, 0.03902675, 0.05519216, 0.06759631, 0.0780535,  0.08726646]
-    # binscheme_LP = [0.0, 0.03902675, 0.05519216, 0.06759631, 0.0780535,  0.08726646]
-    
-    # Nbina_LL_plus = len(binscheme_LL_plus) - 1           #number of angular separation bins for LL plus
-    # Nbina_LL_minus = len(binscheme_LL_minus) - 1         #number of angular separation bins for LL minus
-    # Nbina_LE_plus = len(binscheme_LE_plus) - 1           #number of angular separation bins for LE plus
-    # Nbina_LE_minus = len(binscheme_LE_minus) - 1         #number of angular separation bins for LE minus
-    # Nbina_LP = len(binscheme_LP) - 1                     #number of angular separation bins for LP
-    
-    # automatically calculate the binning according to the number of bins
-    Nbina_LL_plus = Nbina                #number of angular separation bins for LL plus
-    Nbina_LL_minus = Nbina               #number of angular separation bins for LL minus
-    Nbina_LE_plus = Nbina                #number of angular separation bins for LE plus
-    Nbina_LE_minus = Nbina               #number of angular separation bins for LE minus
-    Nbina_LP = Nbina                     #number of angular separation bins for galaxy positions
-    
-    binscheme_LL_plus = Nbina_LL_plus 
-    binscheme_LL_minus = Nbina_LL_minus 
-    binscheme_LE_plus = Nbina_LE_plus 
-    binscheme_LE_minus = Nbina_LE_minus
-    binscheme_LP = Nbina_LP
-
-else:
-
-    SNR_goal = 8
-    Nbin_max = 20          #this should dictate the maximum number of angular bins, but it won't be exact, and relies on an empirical relationship
-    SNR_min = 2.5
-    theta_resolution = 1000  #the number of thetas in the linspace with which we obtain the max theta and calculate the "total SNR"
-
-    SNR_goal_LL_plus = 6
-    Nbin_max_LL_plus =  Nbin_max
-    SNR_min_LL_plus = SNR_min 
-
-    SNR_goal_LL_minus = 6
-    Nbin_max_LL_minus =  Nbin_max
-    SNR_min_LL_minus = SNR_min
-
-    SNR_goal_LE_plus = SNR_goal
-    Nbin_max_LE_plus =  Nbin_max
-    SNR_min_LE_plus = SNR_min   
-
-    SNR_goal_LE_minus = SNR_goal
-    Nbin_max_LE_minus =  Nbin_max
-    SNR_min_LE_minus = SNR_min       
-
-    SNR_goal_LP = SNR_goal
-    Nbin_max_LP =  Nbin_max
-    SNR_min_LP = SNR_min          
 
 ########################################## cosmology #########################################################
 
@@ -142,22 +100,16 @@ sigma_E = np.sqrt(2) * 0.3                                            #the noise
 ##################################### numerical stuff ########################################################
 
 max_cpus = 512
-nsamp_string = '1e5'
-nsamp = int(float(nsamp_string))
-Csamp = nsamp*10        #default number of samples in the Monte Carlo integrator for triple cosmic integrals
+# nsamp_string = '5e7'
+# nsamp = int(float(nsamp_string))
+nsamp = 2**17
+Csamp = nsamp*128       #default number of samples in the Monte Carlo integrator for triple cosmic integrals
 Nsamp = nsamp           #default number of samples in the Monte Carlo integrator for double noise/sparsity integrals
-num_batches = 1000     #should be > maxsamp * 373 / (ram per node)
+num_batches = 2**10     #should be > maxsamp * 373 / (ram per node)
 desired_error = 1       #percentage desired fractional error in integrals
 confidence = 0.95       #confidence level for the error estimate (not currently used)
 warning_level = 500     #level above which we print an integration error
 total_error_threshold = 0.2  #the threshold for the total error on a term to be too high and to print a warning
-
-Thetamin_arcmin = 0.1                            #minimum theta from which we calculate correlation functions (in arcmin)   
-Thetamax = np.pi                                 #maximum theta to which we calculate correlation functions (in radians)
-nTheta = 10000                                   #number of points used to compute the correlation function
-
-lmax = 1e8
-nl = 1000
 
 ################################################## Imports #####################################################
 
@@ -181,9 +133,11 @@ from multiprocessing import Pool, cpu_count
 from multiprocessing import Process, Manager
 from itertools import product
 import inspect
-from scipy.stats import norm
+from scipy.stats import norm, qmc
 from scipy.integrate import quad
 from scipy.optimize import root_scalar, minimize_scalar
+from scipy.interpolate import UnivariateSpline
+from scipy.ndimage import median_filter
 
 ############################################### Cosmology #####################################################
 
@@ -200,15 +154,7 @@ hubble_units=False, k_hunit=False, var1=model.Transfer_Weyl, var2=model.Transfer
 ############################################## shared variables ##############################################
 
 # Shared variables
-global_dict = {}
-
-########################## adjust these if only interested in specific combinations ########################## 
-
-cov_matrices_full = ['LELE', 'LPLP']   # Needs (b1, b2) 
-cov_matrices_b1 = []             # Needs only b1
-cov_matrices_no_b = ['LLLL']                   # No (b1, b2) 
-
-cov_types = ["ccov", "ncov"]    
+global_dict = {}  
 
 ####################### the suffix defining the folder names ###############################################
 
@@ -220,4 +166,3 @@ def format_sci(n):
 
 if not os.path.exists(f'correlations_NE={Nbinz_E}_NP={Nbinz_P}{correlation_notes}'):
     compute_correlations = True      
-
