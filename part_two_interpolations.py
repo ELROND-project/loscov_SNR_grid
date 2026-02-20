@@ -13,6 +13,8 @@ thetas = np.logspace(
     theta_res_interpolation
 )
 
+save_pickle(thetas, f'data/Interpolations/raw/thetas', f"Saved thetas")
+
 load_correlations(filename=f"correlations_NE={Nbinz_E}_NP={Nbinz_P}{correlation_notes}")
 redshift_distributions = load_file(f"data/redshift_distributions")
 
@@ -57,6 +59,9 @@ if task == 'LLLL_ccov':
 
     plus_values = np.concatenate([r[0] for r in results])
     minus_values = np.concatenate([r[1] for r in results])
+
+    save_pickle(plus_values, f'data/Interpolations/raw/LLLL_ccov_plus', f"Saved LLLL_ccov_plus_raw")
+    save_pickle(minus_values, f'data/Interpolations/raw/LLLL_ccov_minus', f"Saved LLLL_ccov_minus_raw")
     
     # LELE_ccov_plus_values, LELE_ccov_minus_values = LELE_ccov_v_theta(thetas)
 
@@ -65,6 +70,16 @@ if task == 'LLLL_ccov':
 
     save_pickle(LLLL_ccov_plus, f'data/Interpolations/LLLL_ccov_plus', f"Saved LLLL_ccov_plus")
     save_pickle(LLLL_ccov_minus, f'data/Interpolations/LLLL_ccov_minus', f"Saved LLLL_ccov_minus")
+
+    # Light smoothing
+    plus_values_smooth  = smoothing(plus_values,  sigma=cosmic_smoothing)
+    minus_values_smooth = smoothing(minus_values, sigma=cosmic_smoothing)
+    
+    LLLL_ccov_plus_smooth  = interpolation(thetas, plus_values_smooth)
+    LLLL_ccov_minus_smooth = interpolation(thetas, minus_values_smooth)
+
+    save_pickle(LLLL_ccov_plus_smooth, f'data/Interpolations/LLLL_ccov_plus_smooth', f"Saved LLLL_ccov_plus_smooth")
+    save_pickle(LLLL_ccov_minus_smooth, f'data/Interpolations/LLLL_ccov_minus_smooth', f"Saved LLLL_ccov_minus_smooth")
 
 ################################################ 2.2 LELE_ccov ###############################################################
 ##############################################################################################################################
@@ -91,6 +106,9 @@ elif task == 'LELE_ccov':
 
     plus_values = np.concatenate([r[0] for r in results])
     minus_values = np.concatenate([r[1] for r in results])
+
+    save_pickle(plus_values, f'data/Interpolations/raw/LELE_ccov_plus', f"Saved LELE_ccov_plus_raw")
+    save_pickle(minus_values, f'data/Interpolations/raw/LELE_ccov_minus', f"Saved LELE_ccov_minus_raw")
     
     # LELE_ccov_plus_values, LELE_ccov_minus_values = LELE_ccov_v_theta(thetas)
     
@@ -99,6 +117,16 @@ elif task == 'LELE_ccov':
     
     save_pickle(LELE_ccov_plus, f'data/Interpolations/LELE_ccov_plus', f"Saved LELE_ccov_plus")
     save_pickle(LELE_ccov_minus, f'data/Interpolations/LELE_ccov_minus', f"Saved LELE_ccov_minus")
+
+    # Light smoothing
+    plus_values_smooth  = smoothing(plus_values,  sigma=cosmic_smoothing)
+    minus_values_smooth = smoothing(minus_values, sigma=cosmic_smoothing)
+    
+    LELE_ccov_plus_smooth  = interpolation(thetas, plus_values_smooth)
+    LELE_ccov_minus_smooth = interpolation(thetas, minus_values_smooth)
+
+    save_pickle(LELE_ccov_plus_smooth, f'data/Interpolations/LELE_ccov_plus_smooth', f"Saved LELE_ccov_plus_smooth")
+    save_pickle(LELE_ccov_minus_smooth, f'data/Interpolations/LELE_ccov_minus_smooth', f"Saved LELE_ccov_minus_smooth")
 
 ################################################ 2.3 LPLP_ccov ###############################################################
 ##############################################################################################################################
@@ -123,11 +151,20 @@ elif task == 'LPLP_ccov':
 
     values = np.concatenate([r for r in results])
     
+    save_pickle(values, f'data/Interpolations/raw/LPLP_ccov', f"Saved LPLP_ccov")
+    
     # LPLP_ccov_values = LPLP_ccov_v_theta(thetas)
     
     LPLP_ccov = interpolation(thetas, values)
     
     save_pickle(LPLP_ccov, f'data/Interpolations/LPLP_ccov', f"Saved LPLP_ccov")
+
+    # Light smoothing
+    values_smooth  = smoothing(values,  sigma=cosmic_smoothing)
+    
+    LPLP_ccov_smooth  = interpolation(thetas, values_smooth)
+
+    save_pickle(LPLP_ccov_smooth, f'data/Interpolations/LPLP_ccov_smooth', f"Saved LPLP_ccov_smooth")
 
 ##############################################################################################################################
 ##################################################### 3. Noise ###############################################################

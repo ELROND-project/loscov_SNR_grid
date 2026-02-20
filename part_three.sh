@@ -11,7 +11,7 @@
 ORIGINAL_DIR=$(pwd)
 
 # Number of parameter combinations per array task
-PARAMS_PER_TASK=32
+PARAMS_PER_TASK=10
 
 # Count total non-empty parameter lines
 NPARAMS=$(awk 'NF' "${ORIGINAL_DIR}/params.txt" | wc -l)

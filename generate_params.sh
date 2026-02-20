@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=init_job
-#SBATCH --output=logs/init.log
-#SBATCH --error=logs/init.err
+#SBATCH --job-name=generate_params
+#SBATCH --output=logs/generate_params.log
+#SBATCH --error=logs/generate_params.err
 #SBATCH --ntasks=1
 #SBATCH --mem=5000
 #SBATCH --partition=lupm
@@ -10,7 +10,7 @@
 
 ORIGINAL_DIR=$(pwd)  #the current working directory
 
-echo "Running initialization scripts"
+echo "Generating param file"
 source ~/lenstronomyenv/bin/activate
 python -u generate_params.py
-echo "Initialization finished"
+echo "File generated"

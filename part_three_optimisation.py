@@ -21,11 +21,19 @@ redshift_distributions = load_file(f"data/redshift_distributions")
 
 add_dict(redshift_distributions)
 
-LLLL_ccov_plus = load_file(f'data/Interpolations/LLLL_ccov_plus')
-LLLL_ccov_minus = load_file(f'data/Interpolations/LLLL_ccov_minus')
-LELE_ccov_plus = load_file(f'data/Interpolations/LELE_ccov_plus')
-LELE_ccov_minus = load_file(f'data/Interpolations/LELE_ccov_minus')
-LPLP_ccov = load_file(f'data/Interpolations/LPLP_ccov')
+if smooth:
+    LLLL_ccov_plus = load_file(f'data/Interpolations/LLLL_ccov_plus_smooth')
+    LLLL_ccov_minus = load_file(f'data/Interpolations/LLLL_ccov_minus_smooth')
+    LELE_ccov_plus = load_file(f'data/Interpolations/LELE_ccov_plus_smooth')
+    LELE_ccov_minus = load_file(f'data/Interpolations/LELE_ccov_minus_smooth')
+    LPLP_ccov = load_file(f'data/Interpolations/LPLP_ccov_smooth')
+
+else: 
+    LLLL_ccov_plus = load_file(f'data/Interpolations/LLLL_ccov_plus')
+    LLLL_ccov_minus = load_file(f'data/Interpolations/LLLL_ccov_minus')
+    LELE_ccov_plus = load_file(f'data/Interpolations/LELE_ccov_plus')
+    LELE_ccov_minus = load_file(f'data/Interpolations/LELE_ccov_minus')
+    LPLP_ccov = load_file(f'data/Interpolations/LPLP_ccov')
 
 add_dict(LLLL_ccov_plus, LLLL_ccov_minus, LELE_ccov_plus, LELE_ccov_minus, LPLP_ccov)
 
@@ -54,9 +62,6 @@ from functions.angular_distributions import *
 from functions.covariance.LLLL import *
 from functions.covariance.LELE import *
 from functions.covariance.LPLP import *
-
-# Loop through covariance matrices with fixed b1=1, b2=1, cov_type='ncov'
-B = 0
 
 matrices_folder = f'data/covariance/{suffix}'
 
@@ -117,17 +122,15 @@ values = []
 for theta in thetas:
     values.append(total_variance_LLLL_plus(theta))
 
-values = median_filter(values, size=smoothing_window)
+values = np.array(values)
 
 mask = values > 0
 
 thetas = thetas[mask]
 values = values[mask]
-
-total_variance_LLLL_plus = interpolation(thetas, values)
     
 #optimise the binning
-LLLL_plus_optimised_theta, LLLL_plus_optimised_signal, LLLL_plus_optimised_std, LLLL_plus_optimised_SNR = optimise_bins(LL_plus_primitive, total_variance_LLLL_plus)
+LLLL_plus_optimised_theta, LLLL_plus_optimised_signal, LLLL_plus_optimised_std, LLLL_plus_optimised_SNR = optimise_bins(thetas, LL_plus_primitive, values)
 
 #evaluate the noise and sparsity at the optimised theta
 LLLL_plus_optimised_noise_sparsity = LLLL_ncov(LLLL_plus_optimised_theta)
@@ -178,17 +181,15 @@ values = []
 for theta in thetas:
     values.append(total_variance_LLLL_minus(theta))
 
-values = median_filter(values, size=smoothing_window)
+values = np.array(values)
 
 mask = values > 0
 
 thetas = thetas[mask]
 values = values[mask]
 
-total_variance_LLLL_minus = interpolation(thetas, values)
-
 #optimise the binning
-LLLL_minus_optimised_theta, LLLL_minus_optimised_signal, LLLL_minus_optimised_std, LLLL_minus_optimised_SNR = optimise_bins(LL_minus_primitive, total_variance_LLLL_minus)
+LLLL_minus_optimised_theta, LLLL_minus_optimised_signal, LLLL_minus_optimised_std, LLLL_minus_optimised_SNR = optimise_bins(thetas, LL_minus_primitive, values)
 
 #evaluate the noise and sparsity at the optimised theta
 LLLL_minus_optimised_noise_sparsity = LLLL_ncov(LLLL_minus_optimised_theta)
@@ -259,17 +260,15 @@ values = []
 for theta in thetas:
     values.append(total_variance_LELE_plus(theta))
 
-values = median_filter(values, size=smoothing_window)
+values = np.array(values)
 
 mask = values > 0
 
 thetas = thetas[mask]
 values = values[mask]
 
-total_variance_LELE_plus = interpolation(thetas, values)
-
 #optimise the binning
-LELE_plus_optimised_theta, LELE_plus_optimised_signal, LELE_plus_optimised_std, LELE_plus_optimised_SNR = optimise_bins(LE_plus_primitive[0], total_variance_LELE_plus)
+LELE_plus_optimised_theta, LELE_plus_optimised_signal, LELE_plus_optimised_std, LELE_plus_optimised_SNR = optimise_bins(thetas, LE_plus_primitive[0], values)
 
 #evaluate the noise and sparsity at the optimised theta
 LELE_plus_optimised_noise_sparsity = LELE_ncov(LELE_plus_optimised_theta)
@@ -320,17 +319,15 @@ values = []
 for theta in thetas:
     values.append(total_variance_LELE_minus(theta))
 
-values = median_filter(values, size=smoothing_window)
+values = np.array(values)
 
 mask = values > 0
 
 thetas = thetas[mask]
 values = values[mask]
 
-total_variance_LELE_minus = interpolation(thetas, values)
-
 #optimise the binning
-LELE_minus_optimised_theta, LELE_minus_optimised_signal, LELE_minus_optimised_std, LELE_minus_optimised_SNR = optimise_bins(LE_minus_primitive[0], total_variance_LELE_minus)
+LELE_minus_optimised_theta, LELE_minus_optimised_signal, LELE_minus_optimised_std, LELE_minus_optimised_SNR = optimise_bins(thetas, LE_minus_primitive[0], values)
 
 #evaluate the noise and sparsity at the optimised theta
 LELE_minus_optimised_noise_sparsity = LELE_ncov(LELE_minus_optimised_theta)
@@ -395,17 +392,15 @@ values = []
 for theta in thetas:
     values.append(total_variance_LPLP(theta))
 
-values = median_filter(values, size=smoothing_window)
+values = np.array(values)
 
 mask = values > 0
 
 thetas = thetas[mask]
 values = values[mask]
 
-total_variance_LPL = interpolation(thetas, values)
-
 #optimise the binning
-LPLP_optimised_theta, LPLP_optimised_signal, LPLP_optimised_std, LPLP_optimised_SNR = optimise_bins(LP_primitive[0], total_variance_LPLP)
+LPLP_optimised_theta, LPLP_optimised_signal, LPLP_optimised_std, LPLP_optimised_SNR = optimise_bins(thetas, LP_primitive[0], values)
 
 #evaluate the noise and sparsity at the optimised theta
 LPLP_optimised_noise_sparsity = LPLP_ncov(LPLP_optimised_theta)
@@ -424,8 +419,3 @@ LPLP_dict = {'optimised_theta': LPLP_optimised_theta,
 
 filename = f"{output_dir_LPLP}/data"
 save_pickle(LPLP_dict, filename, f"LPLP sigma_L = {sigma_L} Nlens = {Nlens}")
-
-
-
-
-

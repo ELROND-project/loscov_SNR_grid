@@ -6,38 +6,47 @@ from config import *
 
 from functions.useful_functions import *
 
-def optimise_bins(antiderivative, variance):
+def optimise_bins(thetas, antiderivative, variance_values, Thetamin = thetamin_optimiser):
+    """
+    Determines the bin limits which optimises the SNR for a given observable.
+    """
+
+    mask = thetas >= Thetamin
+
+    thetas = thetas[mask]
+    variance_values = variance_values[mask]
     
-    redshift_distributions = load_file(f"data/redshift_distributions")
-    
-    def SNR(theta):
+    # Evaluate antiderivative at all thetas
+    A_theta = antiderivative(thetas) 
+    A0 = antiderivative(Thetamin)
 
-        numerator = np.abs(antiderivative(theta) - antiderivative(0))
-        
-        denom_sq = np.abs(variance(theta)) #sometimes very small values cross into negative
-        
-        if not np.isfinite(denom_sq):
-            print(f"[BAD VAR] non-finite at theta={theta}: {denom_sq}", flush=True)
-        elif denom_sq <= 0:
-            print(f"[BAD VAR] non-positive at theta={theta}: {denom_sq}", flush=True)
+    numerator = np.abs(A_theta - A0) 
 
-        denominator = np.sqrt(denom_sq)
+    # Handle problematic variance values
+    denom_sq = np.abs(variance_values)
+    denom_sq[~np.isfinite(denom_sq)] = np.nan
 
-        prefactor = 2/(theta**2)
-        
-        return prefactor * numerator / denominator
+    # The "noise" is the standard deviation, sqrt(variance)
+    denominator = np.sqrt(denom_sq)
 
-    theta_optimal, SNR_max = find_maximum(SNR, theta_min_interpolation, theta_max_interpolation)
+    # signal = numerator * prefactor
+    prefactor = 2 / (thetas**2)
 
-    optimised_signal = 2/(theta_optimal**2)*antiderivative(theta_optimal) - antiderivative(0) #need to check
-    optimised_noise = np.abs(variance(theta_optimal))
-        
-    if not np.isfinite(optimised_noise):
-        print(f"[BAD VAR] non-finite at theta_optimal={theta_optimal}: {optimised_noise}", flush=True)
-    elif optimised_noise <= 0:
-        print(f"[BAD VAR] non-positive at theta_optimal={theta_optimal}: {optimised_noise}", flush=True)
+    # Avoid division by zero at theta=0
+    prefactor[thetas == 0] = np.nan
 
-    return theta_optimal, optimised_signal, optimised_noise, SNR_max         #return a single bin
+    # SNR values at each theta value
+    SNR_values = prefactor * numerator / denominator
+
+    # optimise theta and SNR (via argmax method)
+    theta_optimal, SNR_max, idx_optimal = find_maximum(thetas, SNR_values)
+
+    # Compute signal and noise at this optimised value
+    A_opt = antiderivative(theta_optimal)
+    optimised_signal = 2/(theta_optimal**2) * (A_opt - A0)
+    optimised_noise = variance_values[idx_optimal]
+
+    return theta_optimal, optimised_signal, optimised_noise, SNR_max
 
 class Angular_Distributions:
     """

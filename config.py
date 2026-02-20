@@ -2,13 +2,13 @@ import numpy as np
 import sys, platform, os
 
 #the range over which to compute things (used in part one to create params.txt)
-sigL_lower = -3
+sigL_lower = -4
 sigL_upper = 1
-sigL_n = 160
+sigL_n = 90
 
 Nlens_lower = 1
-Nlens_upper = 8
-Nlens_n = 160
+Nlens_upper = 10
+Nlens_n = 90
 
 compute_correlations = True     #computes the correlation functions necessary for calculating the covariance matrices,
                                  #and saves them in a pickle file. Set to False if this has already been done, which
@@ -59,9 +59,6 @@ theta_min_interpolation = Thetamin #we're working in log space, so we don't star
 theta_max_interpolation = theta_max_interpolation_arcmin / (60 * 180 / np.pi)
 theta_res_interpolation = 640 #the resolution of thetas in the interpolation (ideally divisible by 16)
 
-smoothing_window = 5 #for the rolling median average
-smoothing_value = 0.0 #set to zero and interpolation goes through every point, higher values for more smoothing
-
 Thetamax_LL = theta_max_interpolation          
 Thetamax_LE = theta_max_interpolation            
 Thetamax_LP = theta_max_interpolation
@@ -75,6 +72,16 @@ Thetamax_LE_minus = Thetamax_LE
 Omegatot = sky_coverage * (np.pi / 180)**2                                #sky coverage (in rad^2)
 n_b = ( NGal / sky_coverage * (np.pi / 180)**2 ) / Nbin_z                 #number density of galaxies per redshift bin (in rad^-2)
 r2_max = np.sqrt(Omegatot/np.pi)                                          #the maximum theta used in integrals which would normally run from 0 to infty 
+
+thetamin_optimiser_arcmin = 0
+thetamin_optimiser = thetamin_optimiser_arcmin / (60 * 180 / np.pi)
+
+################################### cosmic variance smoothing ################################################
+
+smooth = True #if True, make use of a Gaussian smoothing of the cosmic variance
+smoothing_method = 'Gaussian' #'median' or 'Gaussian', for different smoothing methods
+cosmic_smoothing = 30 #smoothing the cosmic variance (roughly how many adjacent points are considered. 0 for no smoothing)
+smoothing_value = 0  #smoothing the interpolation 
 
 ########################################## cosmology #########################################################
 
@@ -100,12 +107,13 @@ sigma_E = np.sqrt(2) * 0.3                                            #the noise
 ##################################### numerical stuff ########################################################
 
 max_cpus = 512
-# nsamp_string = '5e7'
-# nsamp = int(float(nsamp_string))
-nsamp = 2**17
-Csamp = nsamp*128       #default number of samples in the Monte Carlo integrator for triple cosmic integrals
+nsamp_string = '1e7'
+nsamp = int(float(nsamp_string))
+# nsamp = 2**19
+Csamp = nsamp*2e2    #default number of samples in the Monte Carlo integrator for triple cosmic integrals
+# Csamp = nsamp*(2**9)    #default number of samples in the Monte Carlo integrator for triple cosmic integrals
 Nsamp = nsamp           #default number of samples in the Monte Carlo integrator for double noise/sparsity integrals
-num_batches = 2**10     #should be > maxsamp * 373 / (ram per node)
+num_batches = 10000      #should be > maxsamp * 373 / (ram per node)
 desired_error = 1       #percentage desired fractional error in integrals
 confidence = 0.95       #confidence level for the error estimate (not currently used)
 warning_level = 500     #level above which we print an integration error
@@ -138,6 +146,7 @@ from scipy.integrate import quad
 from scipy.optimize import root_scalar, minimize_scalar
 from scipy.interpolate import UnivariateSpline
 from scipy.ndimage import median_filter
+from scipy.ndimage import gaussian_filter1d
 
 ############################################### Cosmology #####################################################
 

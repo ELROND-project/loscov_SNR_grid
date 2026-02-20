@@ -140,7 +140,11 @@ def radial_integration(correlation_function, Theta_start, Theta_end):
 
     return integral
     
-def compute_antiderivative(function, theta_max = theta_max_interpolation):
+def compute_antiderivative(function, theta_max = None):
+
+    from config import theta_max_interpolation  
+    if theta_max is None:
+        theta_max = theta_max_interpolation
 
     Thetas = np.logspace(
     np.log10(theta_min_interpolation),
@@ -158,7 +162,18 @@ def compute_antiderivative(function, theta_max = theta_max_interpolation):
 
     return CubicSpline(Thetas, antiderivative_list)
 
-def find_maximum(f, a, b):
+def find_maximum(x_values, y_values):
+    """
+    Finds the maximum y-value and the x at which this occurs.
+    """
+    idx = np.nanargmax(y_values)   #ignore NaNs
+    return x_values[idx], y_values[idx], idx
+
+def find_maximum_smooth_func(f, a, b):
+    """
+    Maximises f(x) on the range a to b. Requires that f is a smooth
+    function with only one maximum.
+    """
     result = minimize_scalar(lambda x: -f(x), bounds=(a, b), method='bounded')
     if result.success:
         x_max = result.x
@@ -167,13 +182,35 @@ def find_maximum(f, a, b):
     else:
         raise RuntimeError("Failed to find maximum.")
 
-def interpolation(x,y,s=smoothing_value):
+def interpolation(x,y,s=None):
+    
+    from config import smoothing_value  # always import at runtime
+    if s is None:
+        s = smoothing_value
 
     return UnivariateSpline(x, y, s=s)
 
+def smoothing(values, sigma=0):
+    
+    if smoothing_method == 'Gaussian':
+        return gaussian_filter1d(values,  sigma=sigma)
+
+    elif smoothing_method == 'median':
+
+        size = int(round(6 * sigma + 1))
+
+        # median filter size must be odd
+        if size % 2 == 0:
+            size += 1
+        
+        return median_filter(values, size=size)
+
+    else:
+        print("Error - unknown smoothing type")
+
 ###################################### Monte Carlo Integrator #######################################
 
-def monte_carlo_integrate_original(funcs, bounds, num_samples=nsamp, num_batches = num_batches):
+def monte_carlo_integrate(funcs, bounds, num_samples=nsamp, num_batches = num_batches):
     """
     Monte Carlo integration over a given domain with error estimation.
     
@@ -269,7 +306,7 @@ def monte_carlo_integrate_original(funcs, bounds, num_samples=nsamp, num_batches
 
 ################################# Quasi-Monte Carlo Integration (Sobol) #######################################
 
-def monte_carlo_integrate(
+def monte_carlo_integrate_qmc(
     funcs,
     bounds,
     num_samples=nsamp,
