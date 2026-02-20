@@ -7,3 +7,10 @@ logs/
 __pycache__/
 .ipynb_checkpoints/
 data/Old/
+data/old/
+data/covariance/
+data/covariance_old/
+Figures/
+tasks.txt
+params*
+old
