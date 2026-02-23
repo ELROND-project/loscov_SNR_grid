@@ -36,30 +36,6 @@ def delta_func(a,b):
 
     return x
 
-def cos_law_side(b,c,A):
-
-    number = b**2 + c**2 - 2*b*c*np.cos(A)
-
-    if np.any(number < 0):
-        print("warning! number = ", number)
-    
-    return np.sqrt(b**2 + c**2 - 2*b*c*np.cos(A))
-
-def cos_law_angle(b, c, a):
-    b = np.asarray(b)
-    c = np.asarray(c)
-    a = np.asarray(a)
-    
-    denominator = 2 * b * c
-    
-    if np.any(denominator == 0):
-        raise ValueError("Invalid input: some values of b or c are zero, leading to division by zero.")
-    
-    cos_angle = (b**2 + c**2 - a**2) / denominator
-    cos_angle = np.clip(cos_angle, -1.0, 1.0)
-    
-    return np.arccos(cos_angle)
-
 def sin2(x):
     return np.sin(2*x)
 
@@ -164,24 +140,40 @@ def radial_integration(correlation_function, Theta_start, Theta_end):
 
     return integral
     
-def compute_antiderivative(function, thetamax_dist = Thetamax_dist):
+def compute_antiderivative(function, theta_max = None):
 
-    Thetamin_rad = arcmintorad(Thetamin_arcmin) 
-    thetamax_rad = arcmintorad(thetamax_dist)
-    
-    Thetas = np.logspace(np.log10(Thetamin_rad), np.log10(thetamax_rad), theta_resolution)
+    from config import theta_max_interpolation  
+    if theta_max is None:
+        theta_max = theta_max_interpolation
+
+    Thetas = np.logspace(
+    np.log10(theta_min_interpolation),
+    np.log10(theta_max_interpolation),
+    theta_res_interpolation
+)
     Thetas = np.insert(Thetas, 0, 0.0)  # Prepend 0 to the array
     
     antiderivative_list = [0]
     
-    for i in range(theta_resolution):
+    for i in range(theta_res_interpolation):
         
         antiderivative = radial_integration(function, 0, Thetas[i + 1])
         antiderivative_list.append(antiderivative)
 
     return CubicSpline(Thetas, antiderivative_list)
 
-def find_maximum(f, a, b):
+def find_maximum(x_values, y_values):
+    """
+    Finds the maximum y-value and the x at which this occurs.
+    """
+    idx = np.nanargmax(y_values)   #ignore NaNs
+    return x_values[idx], y_values[idx], idx
+
+def find_maximum_smooth_func(f, a, b):
+    """
+    Maximises f(x) on the range a to b. Requires that f is a smooth
+    function with only one maximum.
+    """
     result = minimize_scalar(lambda x: -f(x), bounds=(a, b), method='bounded')
     if result.success:
         x_max = result.x
@@ -189,6 +181,32 @@ def find_maximum(f, a, b):
         return x_max, f_max
     else:
         raise RuntimeError("Failed to find maximum.")
+
+def interpolation(x,y,s=None):
+    
+    from config import smoothing_value  # always import at runtime
+    if s is None:
+        s = smoothing_value
+
+    return UnivariateSpline(x, y, s=s)
+
+def smoothing(values, sigma=0):
+    
+    if smoothing_method == 'Gaussian':
+        return gaussian_filter1d(values,  sigma=sigma)
+
+    elif smoothing_method == 'median':
+
+        size = int(round(6 * sigma + 1))
+
+        # median filter size must be odd
+        if size % 2 == 0:
+            size += 1
+        
+        return median_filter(values, size=size)
+
+    else:
+        print("Error - unknown smoothing type")
 
 ###################################### Monte Carlo Integrator #######################################
 

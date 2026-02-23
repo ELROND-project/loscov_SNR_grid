@@ -7,7 +7,6 @@ from config import *
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 from useful_functions import *
 
-
 def get_cls_mixed_LP(b, chimax, lmax, nl):
     """
     This function generates Cls for convergence and shear

@@ -6,30 +6,47 @@ from config import *
 
 from functions.useful_functions import *
 
-def optimise_bins(correlation_function, correlation_type, antiderivative, b, SNR_goal = 20, Nbin_max = 10, SNR_min = 1.5, Thetamax_distribution = Thetamax_dist):
+def optimise_bins(thetas, antiderivative, variance_values, Thetamin = thetamin_optimiser):
+    """
+    Determines the bin limits which optimises the SNR for a given observable.
+    """
 
-    Thetamax_distribution = arcmintorad(Thetamax_distribution)
+    mask = thetas >= Thetamin
+
+    thetas = thetas[mask]
+    variance_values = variance_values[mask]
     
-    redshift_distributions = load_file(f"data/redshift_distributions")
-    
-    def snr(theta_1, theta_2):
+    # Evaluate antiderivative at all thetas
+    A_theta = antiderivative(thetas) 
+    A0 = antiderivative(Thetamin)
 
-        numerator = antiderivative(theta_2) - antiderivative(theta_1)
-        denom_sq = theta_2**2 - theta_1**2
-        
-        if denom_sq <= 0:
-            return 0
+    numerator = np.abs(A_theta - A0) 
 
-        denominator = np.sqrt(denom_sq)
-        
-        return numerator / denominator
+    # Handle problematic variance values
+    denom_sq = np.abs(variance_values)
+    denom_sq[~np.isfinite(denom_sq)] = np.nan
 
-    def SNR(theta):
-        return snr(0,theta)
-        
-    theta_optimal, SNR_max = find_maximum(SNR, 0, Thetamax_distribution)
+    # The "noise" is the standard deviation, sqrt(variance)
+    denominator = np.sqrt(denom_sq)
 
-    return [0, theta_optimal]         #return a single bin
+    # signal = numerator * prefactor
+    prefactor = 2 / (thetas**2)
+
+    # Avoid division by zero at theta=0
+    prefactor[thetas == 0] = np.nan
+
+    # SNR values at each theta value
+    SNR_values = prefactor * numerator / denominator
+
+    # optimise theta and SNR (via argmax method)
+    theta_optimal, SNR_max, idx_optimal = find_maximum(thetas, SNR_values)
+
+    # Compute signal and noise at this optimised value
+    A_opt = antiderivative(theta_optimal)
+    optimised_signal = 2/(theta_optimal**2) * (A_opt - A0)
+    optimised_noise = variance_values[idx_optimal]
+
+    return theta_optimal, optimised_signal, optimised_noise, SNR_max
 
 class Angular_Distributions:
     """
@@ -37,7 +54,7 @@ class Angular_Distributions:
     and their binning in angular separation
     """
     
-    def __init__(self, binscheme=None, sky_coverage=sky_coverage, Nbin_a=None, Thetamax=Thetamax_dist):
+    def __init__(self, binscheme=None, sky_coverage=sky_coverage, Nbin_a=None, Thetamax=theta_max_interpolation):
         """
         Arguments:
         - Nlens         : number of lenses we can use
@@ -46,7 +63,7 @@ class Angular_Distributions:
         - Nbin_a         : number of bins of angular separation
         - b1            : the first angular separation bin
         - b2            : the second angular separation bin
-        - Thetamax      : maximum angular separation, in arcmin
+        - Thetamax      : maximum angular separation, in rad (only used if no binscheme list supplied)
         - binscheme     : list, min and max angular separations of each angular separation bin
         
         All the angular attributes will be expressed in rad.
@@ -58,9 +75,8 @@ class Angular_Distributions:
         # Binning
         if isinstance(binscheme, int): 
             
-            Omega_arcmin2 = np.pi * Thetamax**2 / Nbin_a  #the angular size of each bin
             self.Nbina = Nbin_a
-            self.Omega = Omega_arcmin2 * (np.pi / 180 / 60)**2  # converting the angular size of a bin to rad2
+            self.Omega = np.pi * Thetamax**2 / Nbin_a
             self.Omegas = self.Omega * np.ones(Nbin_a) # in rad2 
             
             # the list of Omegas is in case we want to have different bin sizes
@@ -112,11 +128,7 @@ class Angular_Distributions:
             return f
         
         for a in range(Nbin):
-            print(f'rs={rs}')
-            print(f'Nbin={Nbin}')
-            print(f'integrand={integrand}')
             integral, err = monte_carlo_integrate(integrand, [(rs[a], rs[a+1])])
-            print(f'integral={integral}')
             integral /= Omegas[a]
             xi_bins.append(integral)
 
