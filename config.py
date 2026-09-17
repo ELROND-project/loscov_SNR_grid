@@ -73,7 +73,7 @@ Omegatot = sky_coverage * (np.pi / 180)**2                                #sky c
 n_b = ( NGal / sky_coverage * (np.pi / 180)**2 ) / Nbin_z                 #number density of galaxies per redshift bin (in rad^-2)
 r2_max = np.sqrt(Omegatot/np.pi)                                          #the maximum theta used in integrals which would normally run from 0 to infty 
 
-thetamin_optimiser_arcmin = 0
+thetamin_optimiser_arcmin = 2            #the starting point for the angular binning in the SNR calculation
 thetamin_optimiser = thetamin_optimiser_arcmin / (60 * 180 / np.pi)
 
 ################################### cosmic variance smoothing ################################################
